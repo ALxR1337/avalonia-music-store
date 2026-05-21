@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MusicApp.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="MusicApp.Views.LoginWindow"
+        x:DataType="vm:LoginViewModel"
+        Title="Вхід"
+        Width="420" Height="520"
+        Background="{StaticResource BgBaseBrush}"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        WindowDecorations="BorderOnly">
+
+    <Border Padding="40">
+        <StackPanel Spacing="18" VerticalAlignment="Center">
+
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <Border Background="{StaticResource AccentBrush}"
+                        CornerRadius="14" Width="56" Height="56"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="♪" Foreground="Black"
+                               FontSize="28" FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Музичний магазин" Classes="h2"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Увійдіть, щоб купувати та слухати"
+                           Classes="muted" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+                <TextBlock Text="Логін" Classes="muted"/>
+                <TextBox Text="{Binding Username}" PlaceholderText="alex_rider"/>
+
+                <TextBlock Text="E-mail" Classes="muted"
+                           IsVisible="{Binding IsRegistering}"/>
+                <TextBox Text="{Binding Email}" PlaceholderText="you@example.com"
+                         IsVisible="{Binding IsRegistering}"/>
+
+                <TextBlock Text="Пароль" Classes="muted"/>
+                <TextBox Text="{Binding Password}" PasswordChar="●"/>
+
+                <TextBlock Text="{Binding Error}"
+                           Foreground="{StaticResource DangerBrush}"
+                           FontSize="12"
+                           IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <Button Classes="primary" HorizontalAlignment="Stretch"
+                    Content="Увійти" IsVisible="{Binding !IsRegistering}"
+                    Command="{Binding LoginCommand}"/>
+            <Button Classes="primary" HorizontalAlignment="Stretch"
+                    Content="Створити акаунт" IsVisible="{Binding IsRegistering}"
+                    Command="{Binding LoginCommand}"/>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Classes="secondary" Content="Реєстрація"
+                        HorizontalAlignment="Stretch"
+                        IsVisible="{Binding !IsRegistering}"
+                        Command="{Binding ToggleModeCommand}"/>
+                <Button Grid.Column="0" Classes="secondary" Content="Назад до входу"
+                        HorizontalAlignment="Stretch"
+                        IsVisible="{Binding IsRegistering}"
+                        Command="{Binding ToggleModeCommand}"/>
+                <Button Grid.Column="1" Classes="secondary"
+                        Content="Як гість" HorizontalAlignment="Stretch"
+                        Command="{Binding GuestCommand}"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

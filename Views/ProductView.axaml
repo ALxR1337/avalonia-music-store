@@ -1,0 +1,126 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:m="using:MusicApp.Models"
+             x:Class="MusicApp.Views.ProductView"
+             x:DataType="vm:ProductViewModel">
+
+    <StackPanel Margin="32,24,32,32" Spacing="28">
+
+        <!-- Header / hero -->
+        <Grid ColumnDefinitions="280,*" RowDefinitions="*">
+            <Border Grid.Column="0" Width="240" Height="240"
+                    CornerRadius="{StaticResource RadiusL}">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Offset="0" Color="#FF4A2D1E"/>
+                        <GradientStop Offset="1" Color="#FF161616"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="🎵" FontSize="86"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" Opacity="0.3"/>
+            </Border>
+
+            <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center" Margin="20,0,0,0">
+                <TextBlock Classes="tiny" Text="АЛЬБОМ"/>
+                <TextBlock Classes="h1" Text="{Binding AlbumTitle}"/>
+                <TextBlock Text="{Binding ArtistName}"
+                           Classes="h3"
+                           Foreground="{StaticResource FgSecondaryBrush}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                    <Border Classes="chip">
+                        <TextBlock Text="{Binding GenreLabel}"/>
+                    </Border>
+                    <Border Classes="chip">
+                        <TextBlock Text="{Binding YearLabel}"/>
+                    </Border>
+                    <Border Classes="chip">
+                        <TextBlock Text="{Binding Product.FormatBadge}"/>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,12,0,0">
+                    <TextBlock Text="{Binding PriceLabel}"
+                               FontSize="22" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="{Binding StockLabel}" Classes="muted"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding RatingLabel}" Classes="muted"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,16,0,0">
+                    <Button Classes="primary" Content="🛒  Додати в кошик"
+                            Command="{Binding AddToCartCommand}"/>
+                    <Button Classes="secondary" Content="♡ Зберегти"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Tracklist -->
+        <StackPanel Spacing="12">
+            <TextBlock Classes="h2" Text="Треклист"/>
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}"
+                    Padding="6">
+                <ItemsControl ItemsSource="{Binding Tracks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Track">
+                            <Border Padding="10,8" CornerRadius="{StaticResource RadiusS}">
+                                <Grid ColumnDefinitions="30,40,*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Position}"
+                                               Classes="muted"
+                                               VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Classes="ghost"
+                                            Content="▶" Width="28" Height="28"
+                                            Padding="0"
+                                            Command="{Binding $parent[ItemsControl].((vm:ProductViewModel)DataContext).PlaySampleCommand}"
+                                            CommandParameter="{Binding}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Title}"
+                                               VerticalAlignment="Center" Margin="8,0"/>
+                                    <TextBlock Grid.Column="3" Classes="muted"
+                                               Text="{Binding DurationDisplay}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+
+        <!-- Reviews -->
+        <StackPanel Spacing="12">
+            <TextBlock Classes="h2"
+                       Text="{Binding Reviews.Count, StringFormat='Відгуки ({0})'}"/>
+            <ItemsControl ItemsSource="{Binding Reviews}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="m:Review">
+                        <Border Background="{StaticResource BgElevatedBrush}"
+                                CornerRadius="{StaticResource RadiusM}"
+                                Padding="14" Margin="0,0,0,10">
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding UserDisplayName}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Rating, StringFormat='★ {0}'}"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                               Classes="muted"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

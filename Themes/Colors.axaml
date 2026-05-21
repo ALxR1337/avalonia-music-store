@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Spotify-style palette: deep blacks, near-black sidebar, warm accent -->
+    <Color x:Key="BgBase">#FF121212</Color>
+    <Color x:Key="BgSidebar">#FF000000</Color>
+    <Color x:Key="BgElevated">#FF181818</Color>
+    <Color x:Key="BgElevatedHover">#FF1F1F1F</Color>
+    <Color x:Key="BgCard">#FF1A1A1A</Color>
+    <Color x:Key="BgCardHover">#FF242424</Color>
+    <Color x:Key="BgChip">#FF2A2A2A</Color>
+    <Color x:Key="BgPlayer">#FF181818</Color>
+
+    <Color x:Key="FgPrimary">#FFFFFFFF</Color>
+    <Color x:Key="FgSecondary">#FFB3B3B3</Color>
+    <Color x:Key="FgTertiary">#FF727272</Color>
+    <Color x:Key="FgDisabled">#FF535353</Color>
+
+    <Color x:Key="Accent">#FFE07B39</Color>
+    <Color x:Key="AccentHover">#FFEB8F50</Color>
+    <Color x:Key="AccentPressed">#FFC36622</Color>
+
+    <Color x:Key="Divider">#FF282828</Color>
+    <Color x:Key="DividerSoft">#FF1F1F1F</Color>
+
+    <Color x:Key="Danger">#FFE25555</Color>
+    <Color x:Key="Success">#FF1DB954</Color>
+
+    <SolidColorBrush x:Key="BgBaseBrush" Color="{StaticResource BgBase}" />
+    <SolidColorBrush x:Key="BgSidebarBrush" Color="{StaticResource BgSidebar}" />
+    <SolidColorBrush x:Key="BgElevatedBrush" Color="{StaticResource BgElevated}" />
+    <SolidColorBrush x:Key="BgElevatedHoverBrush" Color="{StaticResource BgElevatedHover}" />
+    <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCard}" />
+    <SolidColorBrush x:Key="BgCardHoverBrush" Color="{StaticResource BgCardHover}" />
+    <SolidColorBrush x:Key="BgChipBrush" Color="{StaticResource BgChip}" />
+    <SolidColorBrush x:Key="BgPlayerBrush" Color="{StaticResource BgPlayer}" />
+
+    <SolidColorBrush x:Key="FgPrimaryBrush" Color="{StaticResource FgPrimary}" />
+    <SolidColorBrush x:Key="FgSecondaryBrush" Color="{StaticResource FgSecondary}" />
+    <SolidColorBrush x:Key="FgTertiaryBrush" Color="{StaticResource FgTertiary}" />
+    <SolidColorBrush x:Key="FgDisabledBrush" Color="{StaticResource FgDisabled}" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHover}" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressed}" />
+
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource Divider}" />
+    <SolidColorBrush x:Key="DividerSoftBrush" Color="{StaticResource DividerSoft}" />
+
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Danger}" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource Success}" />
+
+    <!-- Radii / spacing tokens -->
+    <CornerRadius x:Key="RadiusS">4</CornerRadius>
+    <CornerRadius x:Key="RadiusM">8</CornerRadius>
+    <CornerRadius x:Key="RadiusL">12</CornerRadius>
+    <CornerRadius x:Key="RadiusXL">20</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+
+    <FontFamily x:Key="UiFont">resm:Avalonia.Fonts.Inter#Inter, $Default</FontFamily>
+
+</ResourceDictionary>

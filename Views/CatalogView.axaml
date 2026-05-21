@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:m="using:MusicApp.Models"
+             x:Class="MusicApp.Views.CatalogView"
+             x:DataType="vm:CatalogViewModel">
+
+    <StackPanel Margin="32,24,32,32" Spacing="32">
+
+        <!-- Hero / greeting -->
+        <StackPanel Spacing="6">
+            <TextBlock Classes="tiny" Text="ВІТАЄМО"/>
+            <TextBlock Classes="h1" Text="Музика, яка звучить наживо"/>
+            <TextBlock Classes="muted"
+                       Text="Сотні платівок і компакт-дисків — переслухайте перед покупкою"/>
+        </StackPanel>
+
+        <!-- Genres row -->
+        <StackPanel Spacing="14">
+            <TextBlock Classes="h2" Text="Перегляд за жанрами"/>
+            <ItemsControl ItemsSource="{Binding Genres}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="4"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="m:Genre">
+                        <Button Classes="genre-tile"
+                                Margin="0,0,12,12"
+                                Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenGenreCommand}"
+                                CommandParameter="{Binding}">
+                            <Grid Height="96" HorizontalAlignment="Stretch">
+                                <Border Classes="genre-card"
+                                        CornerRadius="{StaticResource RadiusM}"
+                                        Background="{Binding ., Converter={StaticResource GenreToBrush}}"
+                                        ClipToBounds="True">
+                                    <Grid ColumnDefinitions="6,*,Auto">
+                                        <!-- accent side bar -->
+                                        <Border Grid.Column="0"
+                                                Classes="genre-accent-bar"
+                                                Background="{Binding ., Converter={StaticResource GenreToBrush}, ConverterParameter=accent}"/>
+                                        <!-- name -->
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Name}"
+                                                   FontWeight="Bold" FontSize="18"
+                                                   Margin="16,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource FgPrimaryBrush}"/>
+                                        <!-- big faded first letter -->
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="genre-glyph"
+                                                   Text="{Binding Name, Converter={StaticResource FirstChar}}"
+                                                   FontSize="72" FontWeight="Bold"
+                                                   Margin="0,0,16,0"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Right"
+                                                   Foreground="{StaticResource FgPrimaryBrush}"/>
+                                    </Grid>
+                                </Border>
+                                <!-- hover ring (kept outside the clipped border so the stroke isn't cropped) -->
+                                <Border Classes="genre-ring"
+                                        CornerRadius="{StaticResource RadiusM}"
+                                        BorderBrush="{Binding ., Converter={StaticResource GenreToBrush}, ConverterParameter=accent}"
+                                        BorderThickness="2"
+                                        IsHitTestVisible="False"/>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <!-- New arrivals -->
+        <StackPanel Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Classes="h2" Text="Нові надходження"/>
+                <TextBlock Grid.Column="1" Classes="muted" Text="Показати всі"
+                           VerticalAlignment="Bottom"/>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding NewArrivals}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="m:NewArrivalAlbum">
+                        <Border Classes="card" Width="200" Margin="0,0,14,14">
+                            <Border.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuItem Header="Додати LP в кошик"
+                                              IsVisible="{Binding HasVinyl}"
+                                              Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
+                                              CommandParameter="{Binding Vinyl}"/>
+                                    <MenuItem Header="Додати CD в кошик"
+                                              IsVisible="{Binding HasCd}"
+                                              Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
+                                              CommandParameter="{Binding Cd}"/>
+                                    <MenuItem Header="Прослухати семпл"
+                                              Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).QuickPreviewCommand}"
+                                              CommandParameter="{Binding PrimaryProduct}"/>
+                                </MenuFlyout>
+                            </Border.ContextFlyout>
+                            <StackPanel Spacing="10">
+                                <Grid>
+                                    <Border Width="172" Height="172"
+                                            CornerRadius="{StaticResource RadiusM}"
+                                            Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
+                                            ClipToBounds="True">
+                                        <Grid>
+                                            <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
+                                                       FontSize="64" FontWeight="Bold" Opacity="0.45"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource FgPrimaryBrush}"/>
+                                            <Image Source="{Binding Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                                   Stretch="UniformToFill"/>
+                                        </Grid>
+                                    </Border>
+                                    <Button Classes="play-circle"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,6,6"
+                                            Content="▶"
+                                            Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).QuickPreviewCommand}"
+                                            CommandParameter="{Binding PrimaryProduct}"/>
+                                </Grid>
+                                <Button Classes="text-link"
+                                        Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                        CommandParameter="{Binding PrimaryProduct}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="title"
+                                                   Text="{Binding Album.Title}"
+                                                   FontWeight="SemiBold" FontSize="14"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Classes="subtitle muted"
+                                                   Text="{Binding Album.Artist.Name}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                                <StackPanel Spacing="4">
+                                    <Button Classes="ghost"
+                                            Padding="6,4" HorizontalContentAlignment="Stretch"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding HasVinyl}"
+                                            Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                            CommandParameter="{Binding Vinyl}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Grid.Column="0" Classes="chip" Padding="6,2"
+                                                    Margin="0,0,8,0">
+                                                <TextBlock Text="LP" FontSize="11"
+                                                           Foreground="{StaticResource FgSecondaryBrush}"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Vinyl.Price, StringFormat='{}{0:0} ₴'}"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button Classes="ghost"
+                                            Padding="6,4" HorizontalContentAlignment="Stretch"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding HasCd}"
+                                            Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                            CommandParameter="{Binding Cd}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Grid.Column="0" Classes="chip" Padding="6,2"
+                                                    Margin="0,0,8,0">
+                                                <TextBlock Text="CD" FontSize="11"
+                                                           Foreground="{StaticResource FgSecondaryBrush}"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Cd.Price, StringFormat='{}{0:0} ₴'}"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <!-- Popular this month -->
+        <StackPanel Spacing="14">
+            <TextBlock Classes="h2" Text="Популярні цього місяця"/>
+            <ItemsControl ItemsSource="{Binding Popular}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="m:Product">
+                        <Border Classes="card" Width="190" Margin="0,0,14,14">
+                            <StackPanel Spacing="10">
+                                <Border Width="162" Height="162"
+                                        CornerRadius="{StaticResource RadiusM}"
+                                        Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
+                                        ClipToBounds="True">
+                                    <Grid>
+                                        <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
+                                                   FontSize="60" FontWeight="Bold" Opacity="0.45"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource FgPrimaryBrush}"/>
+                                        <Image Source="{Binding Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                               Stretch="UniformToFill"/>
+                                    </Grid>
+                                </Border>
+                                <Button Classes="text-link"
+                                        Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="title"
+                                                   Text="{Binding Album.Title}"
+                                                   FontWeight="SemiBold" FontSize="14"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Classes="subtitle muted"
+                                                   Text="{Binding Album.Artist.Name}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock
+                                    Text="{Binding Rating, StringFormat='★ {0:0.0}'}"
+                                    Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

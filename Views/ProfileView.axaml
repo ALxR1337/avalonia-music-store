@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:m="using:MusicApp.Models"
+             x:Class="MusicApp.Views.ProfileView"
+             x:DataType="vm:ProfileViewModel">
+
+    <StackPanel Margin="32,24,32,32" Spacing="24">
+
+        <!-- User header -->
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusL}"
+                Padding="24">
+            <Grid ColumnDefinitions="80,*,Auto">
+                <Border Grid.Column="0" Width="64" Height="64"
+                        CornerRadius="32" Background="{StaticResource AccentBrush}">
+                    <TextBlock Text="{Binding Username[0]}"
+                               FontSize="28" FontWeight="Bold" Foreground="Black"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="20,0" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock Classes="tiny" Text="ПРОФІЛЬ"/>
+                    <TextBlock Text="{Binding Username}" Classes="h2"/>
+                    <TextBlock Classes="muted">
+                        <Run Text="{Binding RoleLabel}"/>
+                        <Run Text=" · "/>
+                        <Run Text="{Binding Email}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <Button Grid.Column="2" Classes="secondary"
+                        Content="Змінити пароль" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Orders history -->
+        <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Мої замовлення"/>
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14">
+                <ItemsControl ItemsSource="{Binding Orders}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Order">
+                            <Grid ColumnDefinitions="80,140,180,*,Auto" Margin="0,8">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Id, StringFormat='№{0}'}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                           Classes="muted"
+                                           VerticalAlignment="Center"/>
+                                <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left">
+                                    <TextBlock Text="{Binding Status}" FontSize="11"/>
+                                </Border>
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           VerticalAlignment="Center"/>
+                                <Button Grid.Column="4" Classes="ghost" Content="Деталі →"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

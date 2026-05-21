@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# Rider / ReSharper
+_ReSharper.Caches/
+*.DotSettings.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-local
+bug-hunt/artifacts/
+MusicApp.zip
+*.db
+*.db-shm
+*.db-wal

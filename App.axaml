@@ -1,0 +1,28 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:MusicApp"
+             xmlns:conv="using:MusicApp.Converters"
+             x:Class="MusicApp.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://MusicApp/Themes/Colors.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:CoverPathToImageConverter x:Key="CoverPathToImage"/>
+            <conv:AlbumIdToGradientBrushConverter x:Key="AlbumToGradient"/>
+            <conv:FirstCharConverter x:Key="FirstChar"/>
+            <conv:GenreToBrushConverter x:Key="GenreToBrush"/>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://MusicApp/Themes/ControlStyles.axaml" />
+    </Application.Styles>
+</Application>

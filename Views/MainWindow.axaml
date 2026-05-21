@@ -1,0 +1,182 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MusicApp.ViewModels"
+        xmlns:views="using:MusicApp.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1280" d:DesignHeight="800"
+        x:Class="MusicApp.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Музичний магазин"
+        Width="1280" Height="800"
+        MinWidth="1024" MinHeight="640"
+        Background="{StaticResource BgBaseBrush}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        WindowDecorations="BorderOnly"
+        TransparencyLevelHint="None">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="48,*,Auto" ColumnDefinitions="240,*">
+
+        <!-- ============ TITLE BAR ============ -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Background="{StaticResource BgSidebarBrush}"
+                PointerPressed="OnTitleBarPressed">
+            <Grid ColumnDefinitions="240,*,Auto" VerticalAlignment="Center">
+
+                <!-- Brand -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                            Spacing="10" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <Border Background="{StaticResource AccentBrush}"
+                            CornerRadius="6" Width="22" Height="22"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="♪" Foreground="Black" FontSize="14"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Музичний магазин" FontWeight="Bold" FontSize="14"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Centered search -->
+                <Border Grid.Column="1" Background="{StaticResource BgElevatedBrush}"
+                        CornerRadius="{StaticResource RadiusPill}"
+                        Padding="14,6" MaxWidth="520" Height="34"
+                        HorizontalAlignment="Stretch" Margin="20,0">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="🔍" FontSize="13"
+                                   Foreground="{StaticResource FgSecondaryBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Grid.Column="1"
+                                 Background="Transparent" BorderThickness="0"
+                                 Padding="0" MinHeight="0"
+                                 PlaceholderText="Виконавці, альбоми, треки..."
+                                 Text="{Binding SearchQuery}"
+                                 VerticalAlignment="Center"
+                                 VerticalContentAlignment="Center"
+                                 KeyDown="OnSearchKeyDown"/>
+                    </Grid>
+                </Border>
+
+                <!-- User + window buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                            VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            CornerRadius="{StaticResource RadiusPill}"
+                            Padding="10,4" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="22" Height="22" Fill="{StaticResource AccentBrush}"/>
+                            <TextBlock Text="{Binding UserDisplayName}"
+                                       VerticalAlignment="Center" FontSize="13"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Button Classes="ghost" Width="36" Height="32"
+                            Click="OnMinimize" CornerRadius="6"
+                            ToolTip.Tip="Згорнути">
+                        <Path Stroke="{StaticResource FgSecondaryBrush}"
+                              StrokeThickness="1.4"
+                              Data="M 0,6 L 12,6"/>
+                    </Button>
+                    <Button Classes="ghost" Width="36" Height="32"
+                            Click="OnMaximize" CornerRadius="6"
+                            ToolTip.Tip="Розгорнути">
+                        <Path Stroke="{StaticResource FgSecondaryBrush}"
+                              StrokeThickness="1.4"
+                              Data="M 0.7,0.7 L 11.3,0.7 L 11.3,11.3 L 0.7,11.3 Z"/>
+                    </Button>
+                    <Button Classes="ghost" Width="36" Height="32"
+                            Click="OnClose" CornerRadius="6"
+                            ToolTip.Tip="Закрити">
+                        <Path Stroke="{StaticResource FgSecondaryBrush}"
+                              StrokeThickness="1.4"
+                              Data="M 0.7,0.7 L 11.3,11.3 M 11.3,0.7 L 0.7,11.3"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============ SIDEBAR ============ -->
+        <Border Grid.Row="1" Grid.Column="0"
+                Background="{StaticResource BgSidebarBrush}"
+                Padding="12,16">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="tiny" Text="МАГАЗИН" Margin="14,0,0,8"/>
+                <Button Classes="nav-item"
+                        Command="{Binding NavigateCommand}" CommandParameter="Catalog">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="🏠" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Каталог" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="nav-item"
+                        Command="{Binding NavigateCommand}" CommandParameter="Cart">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="🛒" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Кошик" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="nav-item"
+                        Command="{Binding NavigateCommand}" CommandParameter="Orders">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="📦" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Замовлення" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="nav-item"
+                        Command="{Binding NavigateCommand}" CommandParameter="Profile">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="👤" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Профіль" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}" Margin="10,12"/>
+
+                <TextBlock Classes="tiny" Text="МЕДІАТЕКА" Margin="14,4,0,8"/>
+                <Button Classes="nav-item"
+                        Command="{Binding NavigateCommand}" CommandParameter="Player">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="🎧" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Плеєр" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}" Margin="10,12"
+                           IsVisible="{Binding IsAdmin}"/>
+                <TextBlock Classes="tiny" Text="АДМІН" Margin="14,4,0,8"
+                           IsVisible="{Binding IsAdmin}"/>
+                <Button Classes="nav-item"
+                        IsVisible="{Binding IsAdmin}"
+                        Command="{Binding NavigateCommand}" CommandParameter="Admin">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Text="⚙" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
+                        <TextBlock Text="Керування" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ CONTENT ============ -->
+        <Border Grid.Row="1" Grid.Column="1" Background="{StaticResource BgBaseBrush}">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ContentControl Content="{Binding CurrentView}"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ============ MINI-PLAYER ============ -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2"
+                Background="{StaticResource BgPlayerBrush}"
+                BorderBrush="{StaticResource DividerBrush}"
+                BorderThickness="0,1,0,0"
+                Height="72"
+                IsVisible="{Binding IsMiniPlayerVisible}">
+            <views:MiniPlayerView DataContext="{Binding MiniPlayer}"/>
+        </Border>
+    </Grid>
+</Window>

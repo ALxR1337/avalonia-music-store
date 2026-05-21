@@ -1,0 +1,139 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:m="using:MusicApp.Models"
+             x:Class="MusicApp.Views.SearchResultsView"
+             x:DataType="vm:SearchResultsViewModel">
+
+    <Grid ColumnDefinitions="260,*" Margin="32,24,32,32">
+
+        <!-- Facet sidebar -->
+        <StackPanel Grid.Column="0" Spacing="20" Margin="0,0,24,0">
+            <TextBlock Classes="h3" Text="Фільтри"/>
+
+            <ItemsControl ItemsSource="{Binding Facets}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:FacetGroup">
+                        <StackPanel Spacing="6" Margin="0,0,0,12">
+                            <TextBlock Text="{Binding Title}" Classes="muted"/>
+                            <ItemsControl ItemsSource="{Binding Values}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:FacetValue">
+                                        <CheckBox Content="{Binding Display}"
+                                                  IsChecked="{Binding IsActive}"
+                                                  Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Spacing="6">
+                <TextBlock Text="Ціна, ₴" Classes="muted"/>
+                <Slider Minimum="100" Maximum="1000" Value="{Binding MaxPrice}"/>
+                <TextBlock Text="{Binding MaxPrice, StringFormat='до {0:0} ₴'}"
+                           Classes="muted"/>
+            </StackPanel>
+
+            <Button Classes="secondary" Content="Скинути все" HorizontalAlignment="Stretch"/>
+            <Button Classes="primary" Content="💾 Зберегти запит" HorizontalAlignment="Stretch"/>
+        </StackPanel>
+
+        <!-- Results -->
+        <StackPanel Grid.Column="1" Spacing="20">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="muted"
+                           Text="{Binding TotalCount, StringFormat='Знайдено {0} результатів'}"/>
+                <TextBlock Classes="h1" Text="{Binding Query, StringFormat='Результати: «{0}»'}"/>
+            </StackPanel>
+
+            <!-- chip tabs -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Border Classes="chip accent">
+                    <TextBlock Text="Усі" Foreground="Black" FontWeight="SemiBold"/>
+                </Border>
+                <Border Classes="chip">
+                    <TextBlock Text="{Binding Albums.Count, StringFormat='Альбоми ({0})'}"
+                               Foreground="{StaticResource FgSecondaryBrush}"/>
+                </Border>
+                <Border Classes="chip">
+                    <TextBlock Text="{Binding Artists.Count, StringFormat='Виконавці ({0})'}"
+                               Foreground="{StaticResource FgSecondaryBrush}"/>
+                </Border>
+                <Border Classes="chip">
+                    <TextBlock Text="{Binding Tracks.Count, StringFormat='Треки ({0})'}"
+                               Foreground="{StaticResource FgSecondaryBrush}"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Albums -->
+            <StackPanel Spacing="10">
+                <TextBlock Classes="h3" Text="Альбоми"/>
+                <ItemsControl ItemsSource="{Binding Albums}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Product">
+                            <Border Classes="card" Width="170" Margin="0,0,12,12">
+                                <Button Classes="ghost" Padding="0"
+                                        HorizontalContentAlignment="Stretch"
+                                        Command="{Binding $parent[ItemsControl].((vm:SearchResultsViewModel)DataContext).OpenProductCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Spacing="8">
+                                        <Border CornerRadius="{StaticResource RadiusM}"
+                                                Width="142" Height="142"
+                                                Background="#FF222222">
+                                            <TextBlock Text="💿" FontSize="44"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" Opacity="0.3"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Album.Title}"
+                                                   FontWeight="SemiBold" FontSize="13"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Album.Artist.Name}"
+                                                   Classes="muted"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock
+                                            Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                            Foreground="{StaticResource AccentBrush}"
+                                            FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Tracks -->
+            <StackPanel Spacing="10">
+                <TextBlock Classes="h3" Text="Треки"/>
+                <ItemsControl ItemsSource="{Binding Tracks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Track">
+                            <Border Padding="10,8" CornerRadius="{StaticResource RadiusS}">
+                                <Grid ColumnDefinitions="36,*,Auto">
+                                    <Button Grid.Column="0" Classes="ghost"
+                                            Content="▶" Width="28" Height="28"
+                                            Padding="0"
+                                            Command="{Binding $parent[ItemsControl].((vm:SearchResultsViewModel)DataContext).PlayTrackCommand}"
+                                            CommandParameter="{Binding}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                               VerticalAlignment="Center" Margin="8,0"/>
+                                    <TextBlock Grid.Column="2" Classes="muted"
+                                               Text="{Binding DurationDisplay}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

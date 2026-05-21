@@ -1,0 +1,296 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Base text -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="-0.5" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.h3">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.body">
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBlock.tiny">
+        <Setter Property="Foreground" Value="{StaticResource FgTertiaryBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="LetterSpacing" Value="1" />
+    </Style>
+
+    <!-- TextBox -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- Generic Button reset (Fluent defaults are too bright on a dark surface) -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- Primary CTA -->
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="Black" />
+        <Setter Property="Padding" Value="22,10" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+        <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
+        <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+
+    <!-- Secondary outlined -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{StaticResource FgTertiaryBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="BorderBrush" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- Ghost / icon buttons -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- Round play button (Spotify-style accent circle) -->
+    <Style Selector="Button.play-circle">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="Black" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.play-circle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+        <Setter Property="RenderTransform" Value="scale(1.06)" />
+    </Style>
+
+    <!-- Sidebar item -->
+    <Style Selector="Button.nav-item">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.nav-item.active">
+        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- Chip / pill -->
+    <Style Selector="Border.chip">
+        <Setter Property="Background" Value="{StaticResource BgChipBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
+        <Setter Property="Padding" Value="10,4" />
+    </Style>
+    <Style Selector="Border.chip.accent">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    </Style>
+
+    <!-- Card (album / product) -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.card:pointerover">
+        <Setter Property="Background" Value="{StaticResource BgCardHoverBrush}" />
+    </Style>
+
+    <!-- Genre tile -->
+    <Style Selector="Button.genre-tile">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="RenderTransform" Value="scale(1.0)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.genre-tile /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+    </Style>
+    <Style Selector="Button.genre-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.genre-tile:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.04)" />
+    </Style>
+    <Style Selector="Button.genre-tile:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+    <Style Selector="Button.genre-tile Border.genre-ring">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.genre-tile:pointerover Border.genre-ring">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.genre-tile Border.genre-accent-bar">
+        <Setter Property="Opacity" Value="0.85" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.genre-tile:pointerover Border.genre-accent-bar">
+        <Setter Property="Opacity" Value="1.0" />
+    </Style>
+    <Style Selector="Button.genre-tile TextBlock.genre-glyph">
+        <Setter Property="Opacity" Value="0.18" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.genre-tile:pointerover TextBlock.genre-glyph">
+        <Setter Property="Opacity" Value="0.32" />
+    </Style>
+
+    <!-- Text link: no rounded background, underline on hover -->
+    <Style Selector="Button.text-link">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.text-link /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.text-link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.text-link:pointerover TextBlock.title">
+        <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+    <Style Selector="Button.text-link:pointerover TextBlock.subtitle">
+        <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+
+    <!-- Inline link: shrink to content width, underline on hover (e.g. "Показати всі") -->
+    <Style Selector="Button.link-inline">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.link-inline /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.link-inline:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.link-inline:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.link-inline:pointerover TextBlock">
+        <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+
+    <!-- ListBox / ListBoxItem -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBoxItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="#2AFFFFFF" />
+    </Style>
+
+    <!-- Slider -->
+    <Style Selector="Slider">
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    </Style>
+
+    <!-- ScrollBar (slimmer, dark) -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+</Styles>

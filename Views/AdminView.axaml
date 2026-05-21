@@ -1,0 +1,146 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:m="using:MusicApp.Models"
+             x:Class="MusicApp.Views.AdminView"
+             x:DataType="vm:AdminViewModel">
+
+    <StackPanel Margin="32,24,32,32" Spacing="20">
+
+        <TextBlock Classes="h1" Text="Адміністрування"/>
+
+        <!-- KPI cards -->
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+            <Border Grid.Column="0" Classes="card" Padding="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="muted" Text="Товарів у каталозі"/>
+                    <TextBlock Text="{Binding TotalProducts}" FontSize="32" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="card" Padding="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="muted" Text="Замовлень"/>
+                    <TextBlock Text="{Binding TotalOrders}" FontSize="32" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Classes="card" Padding="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="muted" Text="Виручка"/>
+                    <TextBlock Text="{Binding GrossRevenue, StringFormat='{}{0:0} ₴'}"
+                               FontSize="32" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <TabControl>
+            <TabItem Header="Товари">
+                <StackPanel Spacing="10" Margin="0,14,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="primary" Content="+ Додати товар"/>
+                        <Button Classes="secondary" Content="Експорт у CSV"/>
+                    </StackPanel>
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                        <ItemsControl ItemsSource="{Binding Products}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="m:Product">
+                                    <Grid ColumnDefinitions="50,*,80,80,80,Auto"
+                                          Margin="0,6" VerticalAlignment="Center">
+                                        <TextBlock Grid.Column="0" Text="{Binding Id}"
+                                                   Classes="muted"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Album.Title}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding FormatBadge}"
+                                                   Classes="muted"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Text="{Binding Stock, StringFormat='шт: {0}'}"
+                                                   Classes="muted"/>
+                                        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4">
+                                            <Button Classes="ghost" Content="✎"/>
+                                            <Button Classes="ghost" Content="🗑"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Замовлення">
+                <StackPanel Spacing="10" Margin="0,14,0,0">
+                    <Button Classes="primary" Content="Експорт у Excel" HorizontalAlignment="Left"/>
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                        <ItemsControl ItemsSource="{Binding Orders}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="m:Order">
+                                    <Grid ColumnDefinitions="60,140,180,140,Auto"
+                                          Margin="0,6">
+                                        <TextBlock Grid.Column="0" Text="{Binding Id}"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                   Classes="muted"/>
+                                        <ComboBox Grid.Column="2" SelectedItem="{Binding Status}">
+                                            <ComboBoxItem>New</ComboBoxItem>
+                                            <ComboBoxItem>Processing</ComboBoxItem>
+                                            <ComboBoxItem>Completed</ComboBoxItem>
+                                            <ComboBoxItem>Cancelled</ComboBoxItem>
+                                        </ComboBox>
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <Button Grid.Column="4" Classes="ghost" Content="Деталі"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Статистика">
+                <StackPanel Spacing="14" Margin="0,14,0,0">
+                    <TextBlock Classes="h3" Text="Топ-10 альбомів за продажами"/>
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                        <ItemsControl ItemsSource="{Binding TopSelling}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="m:Product">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,6">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding Album.Title}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Album.Artist.Name}"
+                                                       Classes="muted"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding SalesCount, StringFormat='{}{0} продажів'}"
+                                                   Classes="muted"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,20,0"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Користувачі">
+                <Border Background="{StaticResource BgElevatedBrush}"
+                        CornerRadius="{StaticResource RadiusM}"
+                        Padding="20" Margin="0,14,0,0">
+                    <TextBlock Classes="muted" Text="Управління користувачами буде доступне після підключення БД."/>
+                </Border>
+            </TabItem>
+        </TabControl>
+    </StackPanel>
+</UserControl>
