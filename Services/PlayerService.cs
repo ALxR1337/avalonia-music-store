@@ -56,6 +56,8 @@ public class PlayerService : IPlayerService, IDisposable
     public event EventHandler? MediaEnded;
     public event EventHandler? PositionChanged;
     public event EventHandler? PlaybackStateChanged;
+    public event EventHandler? ShuffleModeChanged;
+    public event EventHandler? RepeatModeChanged;
 
     public Track? CurrentTrack { get; private set; }
     public Album? CurrentAlbum { get; private set; }
@@ -89,14 +91,26 @@ public class PlayerService : IPlayerService, IDisposable
     public bool ShuffleMode
     {
         get => _shuffleMode;
-        set { if (_shuffleMode == value) return; _shuffleMode = value; PersistSettings(); }
+        set
+        {
+            if (_shuffleMode == value) return;
+            _shuffleMode = value;
+            PersistSettings();
+            ShuffleModeChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private RepeatMode _repeatMode = RepeatMode.Off;
     public RepeatMode RepeatMode
     {
         get => _repeatMode;
-        set { if (_repeatMode == value) return; _repeatMode = value; PersistSettings(); }
+        set
+        {
+            if (_repeatMode == value) return;
+            _repeatMode = value;
+            PersistSettings();
+            RepeatModeChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public void PlayAlbum(Album album, int startTrackIndex = 0)
