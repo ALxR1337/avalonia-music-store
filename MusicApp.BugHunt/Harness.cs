@@ -27,46 +27,97 @@ namespace MusicApp.BugHunt;
 public sealed class Harness
 {
     public Window? Window { get; private set; }
+    public IAuthService? Auth { get; private set; }
+    public INavigationService? Nav { get; private set; }
+    public ICatalogService? Catalog { get; private set; }
 
     public static string ArtifactsDir { get; } = ResolveArtifactsDir();
 
-    public Window OpenMainWindow()
+    public Window OpenMainWindow(string? loginAs = null, string? password = null)
     {
         Directory.CreateDirectory(ArtifactsDir);
+        Trace("start");
+        UseIsolatedDb();
+        Trace("isolated-db");
 
         var dbFactory = new MusicStoreDbContextFactory();
         using (var db = dbFactory.CreateDbContext())
+        {
             DbSeeder.EnsureSeeded(db);
+            Trace("seeded");
+            Fts5Initializer.Ensure(db);
+            Trace("fts5");
+        }
 
         var nav = new NavigationService();
         var auth = new AuthService(dbFactory);
         var cart = new CartService(auth, dbFactory);
-        var player = new PlayerService();
         var catalog = new CatalogService(dbFactory);
+        var search = new SearchService(dbFactory);
+        var files = new FileDialogService();
+        Trace("services-ready");
+        var player = new PlayerService(auth, dbFactory, catalog);
+        Trace("player-ready");
 
         nav.Register(NavTarget.Catalog,
             _ => new CatalogViewModel(catalog, nav, player, cart));
         nav.Register(NavTarget.SearchResults,
-            p => new SearchResultsViewModel(catalog, nav, player, cart, p as string ?? string.Empty));
+            p => new SearchResultsViewModel(search, nav, player, cart, auth, p as string ?? string.Empty));
         nav.Register(NavTarget.Product,
-            p => new ProductViewModel(catalog, cart, player, (int)(p ?? 1)));
+            p => new ProductViewModel(catalog, cart, player, nav, auth, (int)(p ?? 1)));
         nav.Register(NavTarget.Cart,
-            _ => new CartViewModel(cart, nav));
+            _ => new CartViewModel(cart, nav, auth));
         nav.Register(NavTarget.Profile,
-            _ => new ProfileViewModel(auth, catalog));
+            _ => new ProfileViewModel(auth, catalog, search, nav));
         nav.Register(NavTarget.Orders,
             _ => new OrdersViewModel(catalog, auth));
         nav.Register(NavTarget.Player,
-            _ => new PlayerViewModel(player, catalog));
+            _ => new PlayerViewModel(player, catalog, auth));
         nav.Register(NavTarget.Admin,
-            _ => new AdminViewModel(catalog));
+            _ => new AdminViewModel(catalog, files));
 
-        var vm = new MainWindowViewModel(nav, auth, cart, player, catalog);
+        if (!string.IsNullOrEmpty(loginAs))
+            auth.TryLogin(loginAs, password ?? string.Empty);
+
+        Trace("vm-build");
+        var vm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
+        Trace("vm-ready");
         var window = new MainWindow { DataContext = vm };
+        Trace("window-ctor");
         window.Show();
+        Trace("window-show");
         Window = window;
+        Auth = auth;
+        Nav = nav;
+        Catalog = catalog;
         Pump();
+        Trace("pumped");
         return window;
+    }
+
+    private static void Trace(string label)
+    {
+        try
+        {
+            File.AppendAllText(Path.Combine(ArtifactsDir, "harness.log"),
+                $"{DateTime.Now:HH:mm:ss.fff} {label}\n");
+        }
+        catch { }
+    }
+
+    // Point the EF context at a per-process temp DB so the harness never
+    // collides with the real app's store.db (or with a lingering testhost
+    // from a previous run holding the WAL lock). Caller-set MUSICAPP_DB_PATH
+    // wins so a user can pin a known fixture if they ever need to.
+    private static void UseIsolatedDb()
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MUSICAPP_DB_PATH")))
+            return;
+
+        var dir = Path.Combine(Path.GetTempPath(), "MusicApp.BugHunt");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, $"store-{Environment.ProcessId}-{Guid.NewGuid():N}.db");
+        Environment.SetEnvironmentVariable("MUSICAPP_DB_PATH", path);
     }
 
     public T Find<T>(string name) where T : Control
