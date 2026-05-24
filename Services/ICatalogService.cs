@@ -39,6 +39,11 @@ public interface ICatalogService
     bool UpdateReview(int reviewId, int userId, string text, int rating);
     bool DeleteReview(int reviewId, int userId);
 
+    IReadOnlyList<Album> GetAlbumsByArtist(int artistId, int? excludeAlbumId = null);
+    (double Avg, int Count) GetAlbumRating(int albumId);
+    IReadOnlyList<Review> GetReviewsForAlbum(int albumId);
+    int? GetPrimaryProductId(int albumId);
+
     bool IsInWishlist(int userId, int productId);
     void AddToWishlist(int userId, int productId);
     void RemoveFromWishlist(int userId, int productId);

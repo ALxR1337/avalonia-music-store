@@ -163,6 +163,36 @@ public class CatalogService : ICatalogService
         return reviews;
     }
 
+    public IReadOnlyList<Album> GetAlbumsByArtist(int artistId, int? excludeAlbumId = null) =>
+        _albums
+            .Where(a => a.ArtistId == artistId && (!excludeAlbumId.HasValue || a.Id != excludeAlbumId.Value))
+            .OrderBy(a => a.Year)
+            .ToList();
+
+    public (double Avg, int Count) GetAlbumRating(int albumId)
+    {
+        var productIds = _products.Where(p => p.AlbumId == albumId).Select(p => p.Id).ToHashSet();
+        if (productIds.Count == 0) return (0.0, 0);
+        var ratings = _reviews.Where(r => productIds.Contains(r.ProductId)).Select(r => r.Rating).ToList();
+        if (ratings.Count == 0) return (0.0, 0);
+        return (ratings.Average(), ratings.Count);
+    }
+
+    public IReadOnlyList<Review> GetReviewsForAlbum(int albumId)
+    {
+        var productIds = _products.Where(p => p.AlbumId == albumId).Select(p => p.Id).ToHashSet();
+        if (productIds.Count == 0) return Array.Empty<Review>();
+        return _reviews.Where(r => productIds.Contains(r.ProductId))
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList();
+    }
+
+    public int? GetPrimaryProductId(int albumId)
+    {
+        var p = _products.Where(x => x.AlbumId == albumId).OrderBy(x => x.Id).FirstOrDefault();
+        return p?.Id;
+    }
+
     public bool UpdateReview(int reviewId, int userId, string text, int rating)
     {
         using var db = _dbFactory.CreateDbContext();
