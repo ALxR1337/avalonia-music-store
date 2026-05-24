@@ -23,24 +23,24 @@
 - [?] `CommunityToolkit.Mvvm` 8.4.2 підключено (специфікація прямо не вимагала, але прийнятна заміна власній MVVM)
 - [?] `Semi.Avalonia` 12.0.1 — додатковий UI-кіт (не в специфікації, перевірити, чи реально використовується)
 - [?] `Projektanker.Icons.Avalonia.FontAwesome` підключено — у специфікації Lucide/Material, потребує узгодження
-- [ ] **LibVLCSharp 3.x** + native libvlc — додати в csproj (`VideoLAN.LibVLC.Windows`, `VideoLAN.LibVLC.Mac`)
-- [ ] **Entity Framework Core 8/10 (Sqlite)** — додати `Microsoft.EntityFrameworkCore.Sqlite`
-- [ ] **BCrypt.Net-Next 4.x** — для хешування паролів
-- [ ] **TagLibSharp 2.x** — для читання метаданих аудіо
-- [ ] **ClosedXML 0.102.x** — для експорту замовлень в Excel
-- [ ] (опціонально) **ScottPlot.Avalonia** — для стовпчикової діаграми в Адмінці → Статистика
+- [x] **LibVLCSharp 3.x** + native libvlc — додано (`VideoLAN.LibVLC.Windows`, `VideoLAN.LibVLC.Mac`)
+- [x] **Entity Framework Core 10 (Sqlite)** — `Microsoft.EntityFrameworkCore.Sqlite` 10.0.8
+- [x] **BCrypt.Net-Next 4.x** — додано
+- [x] **TagLibSharp 2.x** — додано
+- [x] **ClosedXML 0.105** — додано в Wave 6
+- [-] (опціонально) **ScottPlot.Avalonia** — свідомо відкладено, KPI + Топ-10 поки що достатньо
 
 ### 1.2. Кросплатформенні нюанси
 
 - [?] Логіка масштабування під Linux/XWayland (`Program.ConfigureLinuxScaling`) — реалізовано добре, поза скоупом специфікації, але не заважає
-- [ ] Перевірка/інструкції встановлення libvlc на Linux (`pacman -S vlc` / `apt install libvlc-dev`)
+- [x] Перевірка libvlc на Linux (Arch: `pacman -Qi vlc` — `libvlc.so.5` присутній)
 - [ ] Перевірка native libvlc під Windows і macOS
 
 ### 1.3. Файлова структура та шляхи
 
-- [ ] Шлях до БД через `Environment.GetFolderPath(SpecialFolder.ApplicationData)` → `MusicStore/store.db`
-- [ ] Створення директорії при першому запуску, якщо її немає
-- [ ] Структура папок для медіа (`samples/`, `full/`, `covers/`) і її конвенція
+- [x] Шлях до БД через `Environment.GetFolderPath(SpecialFolder.ApplicationData)` → `MusicStore/store.db` (з override `MUSICAPP_DB_PATH` для тестів)
+- [x] Створення директорії при першому запуску (`DbContext.OnConfiguring`)
+- [ ] Структура папок для медіа (`samples/`, `full/`, `covers/`) — поки що адмін задає шляхи через `OpenFileDialog`
 
 ---
 
@@ -60,26 +60,27 @@
 - [?] `Models/Playlist.cs` — створено (без `PlaylistTracks` — перевірити)
 - [?] `Models/Enums.cs` (ProductFormat, OrderStatus, UserRole, RepeatMode) — створено
 - [?] `Models/NewArrivalAlbum.cs` — допоміжний DTO для каталогу, створено
-- [ ] `Models/PlayerSettings.cs` (UserId, Volume, RepeatMode, ShuffleMode, LastTrackId)
-- [ ] `Models/SearchHistory.cs`
-- [ ] `Models/SavedSearch.cs`
-- [ ] Перевірити, чи `Track.Lyrics`, `Track.SamplePath`, `Track.FullPath` реально існують у класі
+- [x] `Models/PlayerSettings.cs` (UserId, Volume, RepeatMode, ShuffleMode, LastTrackId) — Wave 1
+- [x] `Models/SearchHistory.cs` — Wave 1
+- [x] `Models/SavedSearch.cs` — Wave 1
+- [x] `Models/Wishlist.cs` (UserId, ProductId, AddedAt) — Wave 5
+- [x] `Track.Lyrics`, `Track.SamplePath`, `Track.FullPath`, `Track.SampleStartSeconds` — присутні
 
 ### 2.2. EF Core DbContext
 
-- [ ] Створити `Data/MusicStoreDbContext.cs` (`DbSet<>` для всіх таблиць)
-- [ ] Конфіги через Fluent API (`OnModelCreating`): ключі, зв'язки, індекси
-- [ ] Конвертер `ProductFormat` ↔ string / int
-- [ ] Міграції: `dotnet ef migrations add Initial`
-- [ ] `Database.Migrate()` при старті, якщо БД не існує
-- [ ] Seed-метод (перенести `SampleData` у seeder для першого запуску в порожню БД)
+- [x] Створити `Data/MusicStoreDbContext.cs` (`DbSet<>` для всіх таблиць)
+- [x] Конфіги через Fluent API (`OnModelCreating`): ключі, зв'язки, індекси
+- [x] Конвертер `ProductFormat` / `OrderStatus` / `UserRole` / `RepeatMode` ↔ string
+- [x] Міграції: Initial, AddArtistPhotoAndSampleStart, AddPlayerSettingsSearchHistorySavedSearches, AddWishlist
+- [x] `Database.Migrate()` при старті (`DbSeeder.EnsureSeeded`)
+- [x] Seed-метод з BCrypt-демо-користувачами (`admin/admin`, `demo/demo`)
 
 ### 2.3. FTS5 пошуковий індекс
 
-- [ ] Створити virtual table `SearchIndex` (FTS5, tokenize: `unicode61 remove_diacritics 2`)
-- [ ] Тригери `INSERT/UPDATE/DELETE` на `Artists`, `Albums`, `Tracks`, `Reviews` для синхронізації індексу
-- [ ] Початкове заповнення індексу з існуючих рядків
-- [ ] Утиліти для виконання `MATCH`-запитів (виносити raw SQL з ORM)
+- [x] Створити virtual table `SearchIndex` (FTS5, tokenize: `unicode61 remove_diacritics 2`) — Wave 4
+- [x] Тригери `INSERT/UPDATE/DELETE` на `Artists`, `Albums`, `Tracks`, `Reviews` для синхронізації індексу — Wave 4
+- [x] Початкове заповнення індексу з існуючих рядків (`Fts5Initializer.Ensure`) — Wave 4
+- [x] Утиліти для виконання `MATCH`-запитів — `SearchService.ExecuteFtsHits` через `SqliteConnection`
 
 ---
 
@@ -87,65 +88,63 @@
 
 ### 3.1. Авторизація `IAuthService`
 
-- [?] Інтерфейс `IAuthService` — створено
-- [?] Реалізація `AuthService` (TryLogin/TryRegister/LoginAsGuest/Logout) — створено
-- [!] **Реалізація-заглушка**: будь-які непорожні креди приймаються, `username == "admin"` → роль Admin
-- [ ] Замінити stub на справжній логін через БД + BCrypt-перевірку
-- [ ] Реєстрація: валідація унікальності username/email, хешування BCrypt
-- [ ] Зміна пароля (з підтвердженням старого)
-- [ ] Сесія: зберегти `CurrentUser` між запусками (`PlayerSettings` чи окремий файл)
+- [x] Інтерфейс `IAuthService` — створено
+- [x] Реалізація `AuthService` (TryLogin/TryRegister/LoginAsGuest/Logout) — створено
+- [x] Справжній логін через БД + BCrypt-перевірку — Wave 1
+- [x] Реєстрація: валідація унікальності username/email, хешування BCrypt — Wave 1
+- [x] Зміна пароля (`TryChangePassword`) — Wave 1
+- [ ] Сесія: зберегти `CurrentUser` між запусками (`PlayerSettings` чи окремий файл) — поки що login кожен запуск
 
 ### 3.2. Каталог `ICatalogService`
 
-- [?] Інтерфейс і реалізація `CatalogService` на основі `SampleData`
-- [?] `GetProduct`, `GetAlbum`, `GetNewArrivals`, `GetNewArrivalAlbums`, `GetPopular`, `GetReviewsFor` — реалізовано
-- [!] `SearchProducts(query)` — **наївний `Contains`**, не використовує FTS5, не парсить операторів
-- [ ] Замінити каталог на EF Core (Albums/Products/etc. з БД, а не з SampleData)
-- [ ] Додати методи для адмін-операцій: AddProduct, UpdateProduct, DeleteProduct, SetActive
-- [ ] Метод повернення «куплених альбомів» для конкретного `UserId` (`JOIN Orders → OrderItems → Products → Albums` де `Status = Completed`)
+- [x] Інтерфейс і реалізація `CatalogService` на основі EF Core
+- [x] `GetProduct`, `GetAlbum`, `GetNewArrivals`, `GetNewArrivalAlbums`, `GetPopular`, `GetReviewsFor` — реалізовано
+- [x] `SearchProducts(query)` — заміщено повним `SearchService` через FTS5 (Wave 4); старий метод залишився для зворотної сумісності
+- [x] Каталог працює з EF Core (Albums/Products/etc. з БД, seed залишився як bootstrap для порожньої БД)
+- [x] Адмін-методи: `AddProduct`, `UpdateProduct`, `SetProductActive` — Wave 6
+- [x] `GetPurchasedAlbums(userId)` + `IsAlbumPurchased(albumId, userId)` — Wave 3
 
 ### 3.3. Кошик `ICartService`
 
-- [?] Інтерфейс і `CartService` — створено
-- [?] Add / Remove / UpdateQuantity / Clear / Checkout — реалізовано
-- [?] Подія `CartChanged`
-- [ ] Персистити кошик у БД (`CartItems` таблиця) — зараз тільки в пам'яті
-- [ ] При логіні з гостьового стану — мерджити гостьовий кошик з кошиком користувача
-- [ ] Перевірка `Stock` при додаванні / збільшенні кількості (не дозволяти більше, ніж є)
+- [x] Інтерфейс і `CartService` — створено
+- [x] Add / Remove / UpdateQuantity / Clear / Checkout — реалізовано
+- [x] Подія `CartChanged`
+- [x] Персистимо кошик у БД (`CartItems` таблиця) — Wave 3
+- [x] При логіні з гостьового стану — мерджимо гостьовий кошик з кошиком користувача — Wave 3
+- [x] Перевірка `Stock` при додаванні / збільшенні кількості — Wave 3
 
 ### 3.4. Плеєр `IPlayerService`
 
-- [?] Інтерфейс і `PlayerService` — створено
-- [?] Події `MediaOpened`, `MediaEnded`, `PositionChanged`, `PlaybackStateChanged`
-- [?] `PlayAlbum`, `PlaySample`, `TogglePlayPause`, `Next`, `Previous`, `Seek`
-- [!] **Stub-реалізація на `DispatcherTimer`** — реального відтворення немає
-- [ ] Інтегрувати LibVLCSharp: `LibVLC`, `MediaPlayer`, передача шляхів `SamplePath` / `FullPath`
-- [ ] Контроль гучності через `MediaPlayer.Volume`
-- [ ] Реальний `Seek` через `MediaPlayer.Time`
-- [ ] Обмеження 30 секунд для семплів (`PlaySample` — зупиняти на 30с)
-- [ ] Перевірка прав на повне відтворення: тільки якщо трек належить до купленого альбому
-- [ ] Збереження `PlayerSettings` (Volume, RepeatMode, ShuffleMode, LastTrackId)
+- [x] Інтерфейс і `PlayerService` — створено
+- [x] Події `MediaOpened`, `MediaEnded`, `PositionChanged`, `PlaybackStateChanged`
+- [x] `PlayAlbum`, `PlaySample`, `TogglePlayPause`, `Next`, `Previous`, `Seek`
+- [x] Інтегровано LibVLCSharp: `LibVLC`, `MediaPlayer`, передача шляхів `SamplePath` / `FullPath` — Wave 2
+- [x] Контроль гучності через `MediaPlayer.Volume` (мап 0..1 → 0..100) — Wave 2
+- [x] Реальний `Seek` через `MediaPlayer.Time` — Wave 2
+- [x] Обмеження 30 секунд для семплів — Wave 2 (`TimeChanged` спрацьовує на `SampleStartSeconds + 30s`)
+- [x] Перевірка прав на повне відтворення — Wave 3 (`IsAlbumPlayable` gate)
+- [x] Збереження `PlayerSettings` (Volume, RepeatMode, ShuffleMode, LastTrackId) — Wave 2
 
 ### 3.5. Навігація `INavigationService`
 
-- [?] Інтерфейс і реалізація з реєстрацією VM-фабрик — створено
-- [?] `NavigateTo(NavTarget, param?)` — створено
-- [ ] Стек історії «← Назад» (у специфікації на картці товару є кнопка «← Назад»)
+- [x] Інтерфейс і реалізація з реєстрацією VM-фабрик — створено
+- [x] `NavigateTo(NavTarget, param?)` — створено
+- [x] Стек історії «← Назад» — Wave 5 (`NavigationService.GoBack`, кнопка на `ProductView`)
 
 ### 3.6. Пошук — окремий сервіс (АІПС-ядро)
 
-- [ ] `ISearchService` з методами `Search(string query)`, `Autocomplete(string prefix)`
-- [ ] `SearchQueryParser` (рекурсивний спуск): вільний текст, `поле:значення`, `поле:від..до`, `поле:<X`, `-виключення`, `"точна фраза"`
-- [ ] AST → побудова комбінованого `MATCH` + `WHERE` запиту
-- [ ] Виконання FTS5 `MATCH` із BM25-ранжуванням
-- [ ] Обчислення фінального `score = BM25*0.6 + log(1+sales)*0.2 + (rating/5)*0.1 + recency*0.1`
-- [ ] Фасетна навігація: `GROUP BY` лічильники по жанру/року/формату/ціні/рейтингу поверх поточного результату
-- [ ] Динамічний перерахунок лічильників при зміні фільтрів
-- [ ] Автодоповнення: префіксний `MATCH 'deat*'` + сортування по `popularity_score`
-- [ ] Debounce 200мс у UI
-- [ ] Нечіткий пошук («Чи мали ви на увазі»): триграмний пошук / Левенштейн при <3 результатах
-- [ ] Запис `SearchHistory` після кожного виконаного запиту
-- [ ] `SavedSearches`: CRUD + флаг `NotifyOnNew` + перевірка нових товарів
+- [x] `ISearchService` з методами `Search(string query, filters)`, `Autocomplete(string prefix)` — Wave 4
+- [x] `SearchQueryParser` (рекурсивний спуск): вільний текст, `поле:значення`, `поле:від..до`, `поле:<X`, `-виключення`, `"точна фраза"` — Wave 4
+- [x] AST → побудова комбінованого `MATCH` + `WHERE` запиту — Wave 4 (`SearchService.BuildMatchClause`)
+- [x] Виконання FTS5 `MATCH` із BM25-ранжуванням (`-bm25(SearchIndex)`) — Wave 4
+- [x] Обчислення фінального `score = BM25*0.6 + log(1+sales)*0.2 + (rating/5)*0.1 + recency*0.1` — Wave 4
+- [x] Фасетна навігація: `GROUP BY` лічильники по жанру/формату/наявності поверх поточного результату — Wave 4
+- [x] Динамічний перерахунок лічильників при зміні фільтрів — Wave 4
+- [x] Автодоповнення: префіксний `MATCH 'deat*'` + сортування по `-bm25` — Wave 4
+- [x] Debounce 200мс у UI (`MainWindowViewModel.OnSearchQueryChanged` → `DispatcherTimer`) — Wave 4
+- [x] Нечіткий пошук («Чи мали ви на увазі»): Левенштейн при <3 результатах — Wave 4
+- [x] Запис `SearchHistory` після кожного виконаного запиту — Wave 4
+- [x] `SavedSearches`: CRUD + флаг `NotifyOnNew` — Wave 4 (перевірка нових товарів відкладена до Wave 7)
 
 ---
 
@@ -162,19 +161,19 @@
 - [?] `ContentControl` для CurrentView
 - [?] Mini-player у нижній рядці
 - [ ] Розміри: специфікація — мін. 1024×640, default 1280×800 — **уже відповідає**, перевірити при різних DPI
-- [ ] Колапсація sidebar до іконок 56px при ширині < 1100px
-- [ ] Підсвічування активного пункту в sidebar по `CurrentTarget`
-- [ ] Бейдж кількості товарів у кошику біля «Кошик»
+- [x] Колапсація sidebar до іконок 72px при ширині < 1100px — Wave 8 (`MainWindow.OnRootSizeChanged` + `BoolToWidthConverter`)
+- [x] Підсвічування активного пункту в sidebar по `CurrentTarget` — Wave 8 (`Classes.active` binding на `IsXxxActive`)
+- [x] Бейдж кількості товарів у кошику біля «Кошик» — Wave 8 (`CartCount` + `HasCartItems`)
 
 ### 4.2. Mini-player
 
 - [?] `MiniPlayerView` + `MiniPlayerViewModel` створено
 - [?] Поява при `MediaOpened` (`IsMiniPlayerVisible = true`)
 - [?] Кнопка [✕] → `CloseMiniPlayer`, кнопка [⛶] → `ExpandMiniPlayer` (перехід на повний плеєр)
-- [ ] **Плавна анімація** появи/зникнення: `TranslateTransform.Y` 72→0, `Opacity` 0→1, 250мс CubicEaseOut (зараз — миттєво)
-- [ ] Мала обкладинка 56×56 (зараз не виводиться обкладинка взагалі)
-- [ ] Регулятор гучності в міні-плеєрі (Volume є у VM, треба ще привʼязати UI-слайдер)
-- [ ] Перевірити: при наступному `MediaOpened` після ручного закриття — плеєр знов з'являється
+- [x] **Плавна анімація** появи/зникнення: `RenderTransform translateY(72)` → `translateY(0)` + Opacity 0→1, 250мс — Wave 8
+- [x] Мала обкладинка 56×56 (`CurrentAlbum` + cover/gradient/FirstChar fallback) — Wave 8
+- [x] Регулятор гучності в міні-плеєрі — вже був у XAML; підтверджено Wave 8
+- [?] При наступному `MediaOpened` після ручного закриття — плеєр знов з'являється (логіка в `MainWindowViewModel` встановлює `IsMiniPlayerVisible=true` на `MediaOpened`)
 
 ---
 
@@ -190,113 +189,113 @@
 - [?] Кнопка ▶ play-circle на обкладинці → `QuickPreview`
 - [?] Клік по картці → `OpenProduct`
 - [?] Клік по жанру → `OpenGenre` (навігація на SearchResults з `жанр:Rock`)
-- [ ] Реальні обкладинки (зараз — градієнт + перша літера; `CoverPath` майже не заповнюється)
+- [x] Реальні обкладинки — справжній seed з `~/Downloads/Music` з 23 альбомами, кожен має `CoverPath` (Wave Real-Music)
 
 ### 5.2. Сторінка результатів пошуку (`SearchResultsView` + VM)
 
-- [?] Контейнер з фасетами зліва (260px) + результатами справа
-- [?] Список альбомів і треків — створено
-- [?] Базові фасети (Жанр, Формат) з лічильниками
-- [!] Фасети **не фільтрують результати**, тільки показуються
-- [ ] Chip-tabs згори: «Усі», «Альбоми (N)», «Виконавці (N)», «Треки (N)», «Відгуки (N)»
-- [ ] Live-update: чекбокс/слайдер → миттєвий перезапит
-- [ ] Динамічні лічильники в фасетах
-- [ ] Sticky sidebar при скролі
-- [ ] Активні фільтри як видаляні chips над результатами
-- [ ] Фасет «Рік» (range-слайдер)
-- [ ] Фасет «Ціна» (range-слайдер 200—X)
-- [ ] Фасет «Рейтинг ★ від N»
-- [ ] Чекбокс «Тільки в наявності»
-- [ ] Кнопка «Скинути все»
-- [ ] Кнопка «💾 Зберегти запит» → запис у `SavedSearches`
-- [ ] Колапс сайдбара в `[≡ Фільтри]` при ширині <1100px
-- [ ] Топ-результат (перший блок)
-- [ ] Кнопка «Чи мали ви на увазі: …» при <3 результатах
-- [ ] Автодоповнення під полем пошуку в title bar (Spotify-style випадаюча панель)
+- [x] Контейнер з фасетами зліва (280px) + результатами справа
+- [x] Список альбомів і треків — створено
+- [x] Базові фасети (Жанр, Формат, Наявність) з лічильниками — Wave 4
+- [x] Фасети фільтрують результати — Wave 4 (`SearchService.Search` приймає `SearchFilters`)
+- [x] Chip-tabs згори: «Усі», «Альбоми (N)», «Виконавці (N)», «Треки (N)», «Відгуки (N)» — Wave 4
+- [x] Live-update: чекбокс/спін → миттєвий перезапит — Wave 4 (`partial void OnXChanged → Reload`)
+- [x] Динамічні лічильники в фасетах — Wave 4
+- [-] Sticky sidebar при скролі — поза scope MVP (загальний ScrollViewer працює достатньо)
+- [x] Активні фільтри як видаляні chips над результатами — Wave 8 (`RemoveFilterCommand`, chip = `ActiveFilterChip` record)
+- [x] Фасет «Рік» (NumericUpDown від/до) — Wave 4
+- [x] Фасет «Ціна» (NumericUpDown від/до) — Wave 4
+- [x] Фасет «Рейтинг ★ від N» — Wave 4
+- [?] Чекбокс «Тільки в наявності» — є як facet bucket, окремий чекбокс відкладено
+- [x] Кнопка «Скинути все» — Wave 4
+- [x] Кнопка «💾 Зберегти запит» → запис у `SavedSearches` — Wave 4
+- [-] Колапс сайдбара в `[≡ Фільтри]` при ширині <1100px — `MainWindow` sidebar вже колапсується, фасет-сайдбар лишимо як є
+- [x] Топ-результат — Wave 8 (окремий блок над списками з `OpenTopResultCommand`)
+- [x] Кнопка «Чи мали ви на увазі: …» при <3 результатах — Wave 4
+- [x] Автодоповнення під полем пошуку в title bar (Popup) — Wave 4
 
 ### 5.3. Картка товару (`ProductView` + `ProductViewModel`)
 
-- [?] Hero: обкладинка + назва, виконавець, чіпси Жанр/Рік/Формат
-- [?] Ціна, залишок, рейтинг
-- [?] Кнопки «🛒 Додати в кошик» (працює), «♡ Зберегти» (заглушка)
-- [?] Треклист з кнопкою ▶ на кожному треку (запускає семпл)
-- [?] Секція «Відгуки» з рендером
-- [ ] Кнопка «← Назад» — є в макеті, у view не реалізована
-- [ ] **Перемикач формату «⚫ Вініл LP | ○ CD»** — спосіб переключитися між двома Product одного Album
-- [ ] Кнопка «Показати всі» відгуки (зараз показуються всі одразу)
-- [ ] Форма «Залишити відгук» для авторизованих, які купили цей продукт
-- [ ] `SaveToWishlist` команда («Зберегти») — реалізувати з користувачем-таблицею
+- [x] Hero: обкладинка + назва, виконавець, чіпси Жанр/Рік
+- [x] Ціна, залишок, рейтинг
+- [x] Кнопки «🛒 Додати в кошик», «♡ Зберегти» (працює через `Wishlist` таблицю) — Wave 5
+- [x] Треклист з кнопкою ▶ на кожному треку (запускає семпл) — Wave 5 (виправлено bug: Include Tracks)
+- [x] Секція «Відгуки» з рендером
+- [x] Кнопка «← Назад» — Wave 5 (через `NavigationService.GoBack()`)
+- [x] **Перемикач формату «⚫ Вініл LP | ○ CD»** — Wave 5 (`ICatalogService.GetSiblingProduct`)
+- [x] Кнопка «Показати всі» відгуки — Wave 5 (перші 3, потім розгортається)
+- [x] Форма «Залишити відгук» для авторизованих, які купили цей продукт — Wave 5 (`CanLeaveReview` gate)
+- [x] `SaveToWishlist` команда («Зберегти») — Wave 5 (`Wishlist` таблиця)
 
 ### 5.4. Кошик (`CartView` + `CartViewModel`)
 
-- [?] Список товарів з мініатюрою, [-] кількість [+], кнопкою «Видалити»
-- [?] Підрахунок суми
-- [?] Кнопка «Оформити замовлення» → `Checkout`
+- [x] Список товарів з мініатюрою, [-] кількість [+], кнопкою «Видалити»
+- [x] Підрахунок суми
+- [x] Кнопка «Оформити замовлення» → `Checkout` (зберігає в `Orders`, декрементить stock)
 - [?] `FlashMessage` після оформлення
-- [ ] Перевірка авторизації перед `Checkout` (гостям — попередній логін)
-- [ ] Підтвердження «видалити товар?» (опціонально)
-- [ ] Промокоди / знижки — поза scope, перевірити
+- [x] Перевірка авторизації перед `Checkout` — Wave 8 (`IsGuest` banner + блокування `Checkout` з flash-повідомленням)
+- [-] Підтвердження «видалити товар?» — поза scope MVP
+- [-] Промокоди / знижки — поза scope
 
 ### 5.5. Замовлення (`OrdersView` + `OrdersViewModel`)
 
-- [?] `OrdersViewModel` — мінімальний, повертає всі замовлення (поки що не фільтрує по користувачу)
-- [?] `OrdersView` — створено
-- [ ] Фільтрувати замовлення по `auth.CurrentUser.Id`
-- [ ] Кнопка «Деталі» з розкриттям списку OrderItems
-- [ ] Колонки: №, дата, статус, сума, кнопка «Деталі»
+- [x] `OrdersViewModel` фільтрує по `auth.CurrentUser.Id` (admin бачить усі)
+- [x] `OrdersView` — створено
+- [x] Фільтрувати замовлення по `auth.CurrentUser.Id` — Wave 3
+- [x] Кнопка «Деталі» з розкриттям списку OrderItems — Wave 7 (`OrdersViewModel.ToggleDetailsCommand` + inline expand)
+- [x] Колонки: №, дата, статус, сума, кнопка «Деталі»
 
 ### 5.6. Профіль (`ProfileView` + `ProfileViewModel`)
 
 - [?] Дані користувача (ім'я, email, роль) — створено
 - [?] Список замовлень — створено
-- [ ] Підвкладка «Замовлення» — таблиця з фільтрами
-- [ ] Підвкладка «Мої відгуки» — список з редагуванням/видаленням
-- [ ] Кнопка «Змінити пароль» (модалка з трьома полями)
-- [ ] Список **збережених запитів** (з `SavedSearches`) — швидке повторне виконання
-- [ ] Індикатор «нові товари по збереженому запиту»
+- [x] Підвкладка «Замовлення» — таблиця з фільтром статусу + inline-expand деталі — Wave 7
+- [x] Підвкладка «Мої відгуки» — список з редагуванням/видаленням (`ICatalogService.GetReviewsByUser/Update/Delete`) — Wave 7
+- [x] Кнопка «Змінити пароль» (`ChangePasswordWindow` модалка) — Wave 7
+- [x] Список **збережених запитів** — Wave 7 (`ProfileViewModel.SavedSearches` через `ISearchService.ListSavedSearchSummaries`)
+- [?] Індикатор «нові товари по збереженому запиту» — Wave 7 (показано поточну кількість матчів через `SavedSearchSummary.CurrentCount`; справжнього дельта-індикатора немає, бо без CreatedAt на Product/Album це неточно)
 
 ### 5.7. Плеєр (`PlayerView` + `PlayerViewModel`)
 
-- [?] Каркас VM з біндингами (TrackTitle, ArtistName, Progress, Volume…)
-- [?] Список «куплених альбомів» — **зараз бере перші 2 з каталогу** (заглушка)
-- [ ] Реальний фільтр куплених альбомів через `Orders → OrderItems → Products → Albums` де `UserId == current` і `Status == Completed`
-- [ ] Drag-slider прогресу (Seek)
-- [ ] Кнопка «+ Додати файли» (`OpenFileDialog`) для своїх локальних треків
-- [ ] Reuse `Themes/DarkTheme.axaml` з нинішнього плеєра (зараз — Themes/Colors.axaml + ControlStyles.axaml)
-- [ ] Drag&drop файлів у плейлист
-- [ ] Перенесення плейлистів з M3U в БД (`Playlists`, `PlaylistTracks`)
+- [x] Каркас VM з біндингами (TrackTitle, ArtistName, Progress, Volume…)
+- [x] Список «куплених альбомів» — Wave 3 (`ICatalogService.GetPurchasedAlbums`)
+- [x] Реальний фільтр куплених альбомів через `Orders → OrderItems → Products → Albums` де `Status == Completed` — Wave 3
+- [x] Drag-slider прогресу (Seek) — Wave 8 (`Slider` з `IsScrubbing` + `CommitSeek` на PointerReleased)
+- [x] Кнопка «+ Додати файли» (`OpenFileDialog`) для своїх локальних треків — Wave 8 (`AddLocalFilesCommand` → `IPlayerService.PlayFile`)
+- [-] Reuse `Themes/DarkTheme.axaml` з нинішнього плеєра — `Themes/Colors.axaml` + `ControlStyles.axaml` повністю його заміщують
+- [-] Drag&drop файлів у плейлист — поза scope MVP
+- [-] Перенесення плейлистів з M3U в БД — поза scope MVP
 
 ### 5.8. Адмінка (`AdminView` + `AdminViewModel`)
 
-- [?] KPI-картки (Товарів / Замовлень / Виручка)
-- [?] TabControl з 4 вкладками: «Товари», «Замовлення», «Статистика», «Користувачі»
-- [?] Вкладка «Товари»: список з кнопками ✎ / 🗑 (без обробників)
-- [?] Вкладка «Замовлення»: список + ComboBox статусу (не зберігає)
-- [?] Вкладка «Статистика»: Топ-10 за продажами
-- [?] Вкладка «Користувачі»: заглушка з текстом
-- [ ] Кнопка «+ Додати товар» → форма редагування (Album/Artist/Genre, поля Product, OpenFileDialog для обкладинки і двох аудіо)
-- [ ] Кнопка ✎ → форма редагування
-- [ ] Кнопка 🗑 → soft-delete (IsActive = false) або hard з підтвердженням
-- [ ] CRUD для виконавців, альбомів, жанрів
-- [ ] **Експорт замовлень в Excel** (ClosedXML) — зараз кнопки є, обробників нема
-- [ ] Експорт товарів у CSV — кнопка є
-- [ ] Зміна `OrderStatus` через ComboBox — пов'язати з командою + збереженням
-- [ ] Кнопка «Деталі» замовлення → модальне вікно зі списком OrderItems
-- [ ] Статистика: блок «Виручка за період» з вибором дат і підрахунком
-- [ ] (опціонально) Стовпчикова діаграма продажів (ScottPlot.Avalonia)
-- [ ] Вкладка «Користувачі»: справжня таблиця, кнопка зміни ролі
-- [ ] Підвантаження ролі: тільки `Admin` бачить вкладку (вже працює через `IsAdmin`)
+- [x] KPI-картки (Товарів / Замовлень / Виручка)
+- [x] TabControl з 4 вкладками: «Товари», «Замовлення», «Статистика», «Користувачі»
+- [x] Вкладка «Товари»: список з кнопками ✎ / 🗑 + обробниками — Wave 6
+- [x] Вкладка «Замовлення»: список + ComboBox статусу + кнопка «Зберегти» — Wave 6
+- [x] Вкладка «Статистика»: Топ-10 за продажами + блок «Виручка за період» — Wave 6
+- [x] Вкладка «Користувачі»: реальна таблиця + ComboBox ролі — Wave 6
+- [x] Кнопка «+ Додати товар» → `ProductEditWindow` (Album/Artist/Genre dropdowns + checkbox «новий», поля Product, `OpenFileDialog` для обкладинки/семплу/повного треку) — Wave 6
+- [x] Кнопка ✎ → форма редагування — Wave 6
+- [x] Кнопка 🗑 → soft-delete (`SetProductActive(false)`) — Wave 6
+- [?] CRUD для виконавців, альбомів, жанрів — нові створюються inline через форму товару; окремі форми не зроблено
+- [x] **Експорт замовлень в Excel** (ClosedXML) — Wave 6 (`ExportOrdersToExcel`)
+- [x] Експорт товарів у CSV — Wave 6 (`ExportProductsToCsv`)
+- [x] Зміна `OrderStatus` через ComboBox + кнопка «Зберегти» — Wave 6
+- [x] Кнопка «Деталі» замовлення → панель з OrderItems (інлайн, не модалка) — Wave 6
+- [x] Статистика: блок «Виручка за період» з вибором дат і підрахунком — Wave 6
+- [-] (опціонально) Стовпчикова діаграма продажів (ScottPlot.Avalonia) — свідомо відкладено
+- [x] Вкладка «Користувачі»: справжня таблиця, кнопка зміни ролі — Wave 6
+- [x] Підвантаження ролі: тільки `Admin` бачить вкладку (через `IsAdmin`)
 
 ### 5.9. Авторизація (`LoginWindow` + `LoginViewModel`)
 
-- [?] `LoginViewModel` (Username, Password, Email, IsRegistering, Error, Guest)
-- [?] `LoginWindow.axaml` — створено
-- [!] Вікно **не використовується** — у `App.OnFrameworkInitializationCompleted` одразу `LoginAsGuest()` і відкривається MainWindow
-- [ ] Запускати `LoginWindow` як стартове, або як модалку перед MainWindow
-- [ ] Кнопка «Увійти» у title bar (поряд з UserDisplayName) → відкривати `LoginWindow`
-- [ ] Реєстрація з валідацією email/паролю
-- [ ] Прибрати dev-quirk «admin → автоматично Admin» коли під'єднана БД
-- [ ] «Продовжити як гість» — працює, але має пройти повний flow
+- [x] `LoginViewModel` (Username, Password, Email, IsRegistering, Error, Guest)
+- [x] `LoginWindow.axaml` — створено
+- [x] Вікно використовується як стартове — Wave 1 (через `RequestClose` → `MainWindow`)
+- [x] Запускати `LoginWindow` як стартове — Wave 1
+- [x] Кнопка «Увійти» у title bar (поряд з UserDisplayName) → відкривати `LoginWindow` повторно — Wave 8 (`OpenLoginCommand`, visible коли `IsGuest`)
+- [x] Реєстрація з валідацією унікальності username/email — Wave 1
+- [x] Прибрано dev-quirk «admin → автоматично Admin» — Wave 1 (тепер BCrypt-перевірка)
+- [x] «Продовжити як гість» — працює
 
 ---
 
@@ -305,43 +304,44 @@
 - [?] Темна тема (`Themes/Colors.axaml` + `Themes/ControlStyles.axaml`) — створено власні
 - [?] Скругленість 8px (`RadiusS/M/L`)
 - [?] Український UI-текст
-- [ ] **Reuse `Themes/DarkTheme.axaml`** з нинішнього плеєра, як вимагає специфікація (поки що — нові стилі, не зрозуміло чи це той самий ресурс)
-- [ ] Акцентний колір — теплий помаранчевий (#E07B39) АБО вишневий (#A02C3F) — обрати один
-- [ ] Шрифт Inter (підключено `Avalonia.Fonts.Inter`) — переконатися, що застосовується глобально
-- [ ] Іконки — замінити emoji (`🏠`, `🛒`, `📦`, `👤`, `🎧`, `⚙`, `🔍`, `▶`) на Font Awesome / Lucide / Material через `Projektanker.Icons.Avalonia`
-- [ ] Культура `uk-UA` (формат дат, чисел) — встановити глобально
+- [-] **Reuse `Themes/DarkTheme.axaml`** — заміщено `Themes/Colors.axaml` + `Themes/ControlStyles.axaml`
+- [?] Акцентний колір (#E07B39 / #A02C3F) — поточний accent визначається в `Themes/Colors.axaml`, остаточний вибір лишимо за дизайном
+- [?] Шрифт Inter — `Program.cs::BuildAvaloniaApp.WithInterFont()` + `UiFont` ресурс
+- [-] Іконки emoji → Font Awesome / Lucide — поза scope MVP (emoji читабельні в темі)
+- [x] Культура `uk-UA` — Wave 8 (`Program.ConfigureUkrainianCulture`)
 
 ---
 
 ## 7. Конвертери та допоміжне
 
 - [?] `Converters/AlbumIdToGradientBrushConverter.cs`
-- [?] `Converters/CoverPathToImageConverter.cs`
+- [x] `Converters/CoverPathToImageConverter.cs` — використовується в `ProductView` (Wave 5)
 - [?] `Converters/FirstCharConverter.cs`
-- [ ] Конвертер `OrderStatus` → українська локалізована назва («Новий», «В обробці», «Виконано», «Скасовано»)
-- [ ] Конвертер `bool → Visibility` (якщо понадобиться)
+- [x] Конвертер `OrderStatus` → українська локалізована назва — Wave 8 (`OrderStatusToUkrainianConverter`)
+- [-] Конвертер `bool → Visibility` — Avalonia має вбудоване `IsVisible`
 
 ---
 
 ## 8. Дані та seed
 
-- [?] `Services/SampleData.cs` з 8 виконавцями, 8 альбомами, 16 продуктами, відгуками, замовленнями
-- [ ] Замінити SampleData на seed для EF Core (виконується тільки якщо БД порожня)
-- [ ] Реальні обкладинки альбомів у `Assets/covers/`
-- [ ] Реальні семпли (30с) у `Assets/samples/` або в окремій data-папці
-- [ ] Демо-користувачі (Admin + Customer) з BCrypt-паролями
+- [x] `Services/SampleData.cs` — 23 справжні альбоми з `~/Downloads/Music`, з виконавцями, біографіями, описами, обкладинками, треками (зчитуються з файлової системи), багато-жанровими тегами
+- [x] SampleData використовується тільки якщо БД порожня; `DbSeeder.WipeLegacyIfPresent` авто-замінює застарілий seed на новий
+- [x] Реальні обкладинки — `Album.CoverPath` вказує на jpg/png у директорії альбому
+- [x] Реальні семпли — `Track.FullPath` і `Track.SamplePath` показують на справжні mp3/opus файли; `SampleStartSeconds=30`
+- [x] Демо-користувачі (Admin + Customer) з BCrypt-паролями — Wave 1 (`admin/admin`, `demo/demo`)
 
 ---
 
 ## 9. Тестування і документація
 
-- [ ] Юніт-тести парсера запитів (синтаксис: поля, діапазони, виключення, фрази)
-- [ ] Юніт-тести `CartService` (мердж, перевірка stock)
-- [ ] Юніт-тести `AuthService` (BCrypt, унікальність)
-- [ ] Юніт-тести фасетної навігації (правильні лічильники)
-- [ ] README з інструкцією запуску (Windows / Linux / macOS), включно з libvlc
-- [ ] Документація API сервісів
-- [ ] Пояснення моделі ранжування для захисту диплому (як гіперпараметри)
+- [ ] Юніт-тести парсера запитів (синтаксис: поля, діапазони, виключення, фрази) — Wave 9
+- [ ] Юніт-тести `CartService` (мердж, перевірка stock) — Wave 9
+- [ ] Юніт-тести `AuthService` (BCrypt, унікальність) — Wave 9
+- [ ] Юніт-тести фасетної навігації (правильні лічильники) — Wave 9
+- [?] Integration-тести через `Avalonia.Headless` — `MusicApp.BugHunt/` (7 тестів покривають waves 3-6 UI flows)
+- [ ] README з інструкцією запуску (Windows / Linux / macOS), включно з libvlc — Wave 9
+- [ ] Документація API сервісів — Wave 9
+- [ ] Пояснення моделі ранжування для захисту диплому (як гіперпараметри `WeightBm25=0.6`, `WeightPopularity=0.2`, `WeightRating=0.1`, `WeightRecency=0.1` в `SearchService`) — Wave 9
 
 ---
 
@@ -355,15 +355,27 @@
 
 ---
 
-## Зведена статистика
+## Зведена статистика (після Wave 6)
 
-| Категорія | Зроблено [?] | В процесі [~] | Конфлікт [!] | Не зроблено [ ] |
-|---|---|---|---|---|
-| Інфраструктура / стек | 4 | 0 | 0 | ~10 |
-| Модель даних | 12 | 0 | 0 | ~7 |
-| Сервіси | 9 | 0 | 3 | ~25 |
-| UI / екрани | 35 | 0 | 2 | ~50 |
-| Дизайн і тема | 3 | 0 | 0 | 5 |
-| Конвертери / seed / тести | 4 | 0 | 0 | ~10 |
+| Категорія | Зроблено [x] | Затверджено [?] | Конфлікт [!] | Не зроблено [ ] | Відкинуто [-] |
+|---|---|---|---|---|---|
+| Інфраструктура / стек | 7 | 1 | 0 | 1 | 1 |
+| Модель даних | 16 | 0 | 0 | 0 | 0 |
+| Сервіси | 30 | 1 | 0 | 1 | 2 |
+| UI: оболонка / mini-player | 1 | 9 | 0 | 5 | 0 |
+| UI: екрани | 49 | 8 | 0 | 12 | 2 |
+| Дизайн і тема | 3 | 0 | 0 | 5 | 0 |
+| Конвертери / seed / тести | 7 | 3 | 0 | 8 | 1 |
 
-**Загалом**: каркас MVVM-прототипу зверстаний і дані на in-memory `SampleData` ходять, але вся технічна основа специфікації (SQLite + EF Core, FTS5 пошук, BCrypt-авторизація, libVLC-відтворення, ClosedXML-експорт, TagLibSharp-метадані) — попереду.
+**Виконано waves 1–8:**
+
+- **Wave 1** — DB + Auth: EF Core SQLite з міграціями, BCrypt-авторизація, LoginWindow як стартове, демо-користувачі.
+- **Wave 2** — LibVLC: реальне відтворення семплів/повних треків, гучність, seek, 30-сек cutoff, PlayerSettings round-trip.
+- **Wave 3** — Catalog/Cart на DB: куплені альбоми (`JOIN Orders → Albums`), кошик у DB, мердж гостя→юзера, перевірка stock, gate повного відтворення.
+- **Wave 4** — АІПС-пошук: FTS5 + тригери, recursive-descent парсер DSL (`поле:значення`, ranges, `-виключення`, `"фраза"`), BM25 + композитний score (§8.7 hyperparameters), динамічні фасети, autocomplete з debounce, fuzzy "Чи мали ви на увазі" (Левенштейн), SearchHistory + SavedSearches.
+- **Wave 5** — Картка товару: back button, format toggle LP↔CD, show-all reviews, форма залишити відгук (з auth+purchase gate), wishlist, cover binding.
+- **Wave 6** — Адмінка: Add/Edit/Delete продуктів через модальне вікно (`ProductEditWindow` з file pickers), CRUD inline для Album/Artist/Genre, Order status update + Order details, Excel-експорт (ClosedXML), CSV-експорт, Users tab з role change, Revenue за період.
+- **Wave 7** — Особистий кабінет: `ProfileView` із трьома вкладками — «Замовлення» (фільтр по статусу + inline-розгортання `OrderItems`), «Мої відгуки» (`GetReviewsByUser` + `UpdateReview` + `DeleteReview`), «Збережені запити» (`ListSavedSearchSummaries`, toggle notify, видалення, ▶ відкрити). Зміна пароля через `ChangePasswordWindow`. `OrdersView` отримав inline-deтаlі для звичайного користувача.
+- **Wave 8** — UI polish: глобальна `uk-UA` культура, конвертер `OrderStatus`, сайдбар колапсує до 72px при ширині <1100px з активним пунктом + бейджем кошика, кнопка «Увійти» у title bar, кошик блокує checkout для гостя з банером, реальні обкладинки в каталозі/пошуку/кошику/плеєрі (через `CoverPathToImageConverter`), міні-плеєр з обкладинкою + slide-up/fade-in анімацією, draggable Seek slider у плеєрі, кнопка «+ Додати файли» через `IPlayerService.PlayFile`, removable chips у пошуку + блок ТОП-РЕЗУЛЬТАТ.
+
+**Залишилось** (wave 9): юніт-тести (парсер, CartService, AuthService, фасети), README з libvlc setup, документація API, захист гіперпараметрів моделі ранжування.
