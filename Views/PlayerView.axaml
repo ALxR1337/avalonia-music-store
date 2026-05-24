@@ -131,10 +131,7 @@
                         <Slider Grid.Column="1" Name="SeekSlider"
                                 Minimum="0" Maximum="100"
                                 Value="{Binding Progress}"
-                                Foreground="{StaticResource AccentBrush}"
-                                PointerPressed="OnSeekPointerPressed"
-                                PointerCaptureLost="OnSeekPointerReleased"
-                                PointerReleased="OnSeekPointerReleased"/>
+                                Foreground="{StaticResource AccentBrush}"/>
                         <TextBlock Grid.Column="2" Text="{Binding DurationText}"
                                    Classes="muted" VerticalAlignment="Center" Margin="12,0,0,0"/>
                     </Grid>
