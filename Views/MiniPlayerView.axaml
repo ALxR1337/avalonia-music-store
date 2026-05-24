@@ -53,10 +53,13 @@
                 <TextBlock Grid.Column="0" Text="{Binding PositionText}"
                            Classes="muted" FontSize="11" VerticalAlignment="Center"
                            Margin="0,0,8,0"/>
-                <ProgressBar Grid.Column="1" Height="3"
-                             Value="{Binding Progress}" Maximum="100"
-                             Foreground="{StaticResource AccentBrush}"
-                             Background="{StaticResource DividerBrush}"/>
+                <Slider Grid.Column="1" Name="SeekSlider"
+                        Minimum="0" Maximum="100"
+                        Value="{Binding Progress}"
+                        Foreground="{StaticResource AccentBrush}"
+                        PointerPressed="OnSeekPointerPressed"
+                        PointerCaptureLost="OnSeekPointerReleased"
+                        PointerReleased="OnSeekPointerReleased"/>
                 <TextBlock Grid.Column="2" Text="{Binding DurationText}"
                            Classes="muted" FontSize="11" VerticalAlignment="Center"
                            Margin="8,0,0,0"/>

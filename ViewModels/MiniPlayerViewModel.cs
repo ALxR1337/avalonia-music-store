@@ -19,6 +19,10 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [ObservableProperty] private double _volume = 0.7;
     [ObservableProperty] private MusicApp.Models.Album? _currentAlbum;
 
+    // While the user is dragging the slider, the timer-driven Progress writes are
+    // suppressed so the thumb does not fight the pointer.
+    public bool IsScrubbing { get; set; }
+
     public MiniPlayerViewModel(IPlayerService player, MainWindowViewModel shell)
     {
         _player = player;
@@ -40,13 +44,24 @@ public partial class MiniPlayerViewModel : ViewModelBase
         ArtistName = _player.CurrentAlbum?.Artist?.Name ?? "семпл 30 с";
         PositionText = Format(_player.Position);
         DurationText = Format(_player.Duration);
-        Progress = _player.Duration.TotalSeconds <= 0
-            ? 0
-            : _player.Position.TotalSeconds / _player.Duration.TotalSeconds * 100.0;
+        if (!IsScrubbing)
+        {
+            Progress = _player.Duration.TotalSeconds <= 0
+                ? 0
+                : _player.Position.TotalSeconds / _player.Duration.TotalSeconds * 100.0;
+        }
         IsPlaying = _player.IsPlaying;
     }
 
     private static string Format(TimeSpan ts) => $"{(int)ts.TotalMinutes}:{ts.Seconds:00}";
+
+    public void CommitSeek(double progressPercent)
+    {
+        var duration = _player.Duration;
+        if (duration.TotalSeconds <= 0) return;
+        var ms = duration.TotalMilliseconds * (Math.Clamp(progressPercent, 0, 100) / 100.0);
+        _player.Seek(TimeSpan.FromMilliseconds(ms));
+    }
 
     [RelayCommand] private void PlayPause() => _player.TogglePlayPause();
     [RelayCommand] private void Next() => _player.Next();
