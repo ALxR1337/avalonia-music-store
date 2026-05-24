@@ -21,7 +21,10 @@ public interface INavigationService
 
     ViewModelBase? CurrentView { get; }
     NavTarget CurrentTarget { get; }
+    bool CanGoBack { get; }
+    bool CanGoForward { get; }
 
     void NavigateTo(NavTarget target, object? parameter = null);
     void GoBack();
+    void GoForward();
 }

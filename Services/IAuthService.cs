@@ -13,6 +13,7 @@ public interface IAuthService
 
     bool TryLogin(string username, string password);
     bool TryRegister(string username, string password, string email);
+    bool TryChangePassword(string oldPassword, string newPassword);
     void LoginAsGuest();
     void Logout();
 }

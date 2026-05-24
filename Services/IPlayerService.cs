@@ -21,6 +21,7 @@ public interface IPlayerService
 
     void PlayAlbum(Album album, int startTrackIndex = 0);
     void PlaySample(Track track);
+    void PlayFile(string path, string? title = null);
     void TogglePlayPause();
     void Stop();
     void Next();

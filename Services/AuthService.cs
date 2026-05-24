@@ -84,6 +84,29 @@ public class AuthService : IAuthService
         return true;
     }
 
+    public bool TryChangePassword(string oldPassword, string newPassword)
+    {
+        if (CurrentUser is null || CurrentUser.Role == UserRole.Guest) return false;
+        if (string.IsNullOrWhiteSpace(newPassword)) return false;
+
+        try
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var user = db.Users.FirstOrDefault(u => u.Id == CurrentUser.Id);
+            if (user is null) return false;
+            if (!BCrypt.Net.BCrypt.Verify(oldPassword, user.PasswordHash)) return false;
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            db.SaveChanges();
+            CurrentUser.PasswordHash = user.PasswordHash;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public void LoginAsGuest()
     {
         CurrentUser = new User { Id = 0, Username = "Гість", Role = UserRole.Guest };

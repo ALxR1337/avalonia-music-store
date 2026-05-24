@@ -143,20 +143,33 @@ public class CartService : ICartService
     public Order Checkout()
     {
         var userId = _currentUserId;
-        var orderItems = Items.Select(i => new OrderItem
+        var orderItems = Items.Select(i =>
         {
-            ProductId = i.ProductId,
-            Quantity = i.Quantity,
-            UnitPrice = i.Product?.Price ?? 0m
+            var album = i.Product?.Album;
+            var formatLabel = i.Product?.FormatBadge ?? string.Empty;
+            return new OrderItem
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                UnitPrice = i.Product?.Price ?? 0m,
+                ProductTitle = album is null ? "—" : $"{album.Title} ({formatLabel})",
+                AlbumTitle = album?.Title ?? "—",
+                ArtistName = album?.Artist?.Name ?? "—",
+                FormatLabel = formatLabel,
+            };
         }).ToList();
         var total = orderItems.Sum(i => i.UnitPrice * i.Quantity);
 
+        var userEmail = !IsGuest ? LookupUserEmail(userId) : null;
         var order = new Order
         {
             UserId = userId,
             CreatedAt = DateTime.UtcNow,
             Status = OrderStatus.New,
             TotalAmount = total,
+            UserEmail = userEmail,
+            ShippingAddress = null,  // collected separately (no UI for it yet)
+            Currency = "UAH",
             Items = orderItems
         };
 
@@ -165,15 +178,12 @@ public class CartService : ICartService
             using var db = _dbFactory.CreateDbContext();
             db.Orders.Add(order);
 
-            // decrement stock
+            // decrement stock (SalesCount is incremented by the OrderItems trigger)
             foreach (var item in Items)
             {
                 var product = db.Products.FirstOrDefault(p => p.Id == item.ProductId);
                 if (product is not null)
-                {
                     product.Stock = Math.Max(0, product.Stock - item.Quantity);
-                    product.SalesCount += item.Quantity;
-                }
             }
 
             // drop persisted cart rows
@@ -186,6 +196,13 @@ public class CartService : ICartService
         Items.Clear();
         Raise();
         return order;
+    }
+
+    private string? LookupUserEmail(int userId)
+    {
+        if (userId <= 0) return null;
+        using var db = _dbFactory.CreateDbContext();
+        return db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Email).FirstOrDefault();
     }
 
     private bool IsGuest => _currentUserId == 0;
@@ -251,7 +268,7 @@ public class CartService : ICartService
         var rows = db.CartItems
             .AsNoTracking()
             .Include(c => c.Product)!.ThenInclude(p => p!.Album)!.ThenInclude(a => a!.Artist)
-            .Include(c => c.Product)!.ThenInclude(p => p!.Album)!.ThenInclude(a => a!.Genre)
+            .Include(c => c.Product)!.ThenInclude(p => p!.Album)!.ThenInclude(a => a!.AlbumGenres)!.ThenInclude(ag => ag.Genre)
             .Where(c => c.UserId == _currentUserId)
             .OrderBy(c => c.AddedAt)
             .ToList();
