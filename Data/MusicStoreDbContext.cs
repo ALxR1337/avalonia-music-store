@@ -29,6 +29,8 @@ public class MusicStoreDbContext : DbContext
     public DbSet<SavedSearch> SavedSearches => Set<SavedSearch>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
     public DbSet<AlbumGenre> AlbumGenres => Set<AlbumGenre>();
+    public DbSet<TrackLike> TrackLikes => Set<TrackLike>();
+    public DbSet<AlbumLike> AlbumLikes => Set<AlbumLike>();
 
     public static string DefaultDbDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MusicStore");
@@ -279,6 +281,22 @@ public class MusicStoreDbContext : DbContext
             e.HasIndex(ag => ag.AlbumId)
                 .IsUnique()
                 .HasFilter("\"IsPrimary\" = 1");
+        });
+
+        mb.Entity<TrackLike>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.TrackId });
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Track).WithMany().HasForeignKey(x => x.TrackId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.UserId);
+        });
+
+        mb.Entity<AlbumLike>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.AlbumId });
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Album).WithMany().HasForeignKey(x => x.AlbumId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.UserId);
         });
     }
 }
