@@ -28,6 +28,9 @@
             <conv:RepeatModeToIconConverter x:Key="RepeatModeToIcon"/>
             <conv:RepeatModeToOpacityConverter x:Key="RepeatModeToOpacity"/>
             <conv:BoolToHighlightBrushConverter x:Key="BoolToHighlightBrush"/>
+            <conv:RepeatModeNotOffConverter x:Key="RepeatModeNotOff"/>
+            <conv:BoolToFontWeightConverter x:Key="BoolToFontWeight"/>
+            <conv:BoolToCurrentForegroundConverter x:Key="BoolToCurrentForeground"/>
         </ResourceDictionary>
     </Application.Resources>
 

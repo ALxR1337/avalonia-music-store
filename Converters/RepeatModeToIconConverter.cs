@@ -14,7 +14,9 @@ public sealed class RepeatModeToIconConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var key = value is RepeatMode.One ? "IconRepeatOne" : "IconRepeat";
-        return Application.Current?.Resources[key] as Geometry;
+        if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true)
+            return resource as Geometry;
+        return null;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

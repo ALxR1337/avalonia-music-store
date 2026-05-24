@@ -98,6 +98,28 @@ public partial class PlayerViewModel : ViewModelBase
     public bool HasReviews => Reviews.Count > 0;
     public string RatingLabel => ReviewCount == 0 ? "Немає відгуків" : $"★ {AvgRating:0.0} ({ReviewCount})";
 
+    // Header title: prefer album title when an album is playing; for local files
+    // (no album context) we fall back to the track title.
+    public string HeaderTitle => HasAlbum ? AlbumTitle : TrackTitle;
+
+    // Single-line "2018 · Hip-Hop · 15 треків · 24 хв" — only renders the parts present.
+    public string MetadataLine
+    {
+        get
+        {
+            if (!HasAlbum) return "";
+            var parts = new System.Collections.Generic.List<string>();
+            if (!string.IsNullOrEmpty(AlbumYear)) parts.Add(AlbumYear);
+            if (!string.IsNullOrEmpty(AlbumGenre)) parts.Add(AlbumGenre);
+            if (!string.IsNullOrEmpty(AlbumTrackCount)) parts.Add(AlbumTrackCount);
+            if (!string.IsNullOrEmpty(AlbumTotalDuration)) parts.Add(AlbumTotalDuration);
+            return string.Join("  ·  ", parts);
+        }
+    }
+
+    public string NowPlayingLabel => HasTrack ? $"Зараз грає: {TrackTitle}" : "";
+    public string MoreFromArtistTitle => string.IsNullOrEmpty(ArtistName) ? "Більше від артиста" : $"Більше від {ArtistName}";
+
     private void OnPurchasedAlbumsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => OnPropertyChanged(nameof(HasPurchasedAlbums));
 
@@ -130,6 +152,10 @@ public partial class PlayerViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasTrack));
         OnPropertyChanged(nameof(HasAlbum));
         OnPropertyChanged(nameof(HasArtist));
+        OnPropertyChanged(nameof(HeaderTitle));
+        OnPropertyChanged(nameof(MetadataLine));
+        OnPropertyChanged(nameof(NowPlayingLabel));
+        OnPropertyChanged(nameof(MoreFromArtistTitle));
 
         RebuildTracks(album);
         ReloadReviews(album);

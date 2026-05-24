@@ -14,7 +14,9 @@ public sealed class BoolToHeartIconConverter : IValueConverter
     {
         var liked = value is bool b && b;
         var key = liked ? "IconHeartFilled" : "IconHeart";
-        return Application.Current?.Resources[key] as Geometry;
+        if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true)
+            return resource as Geometry;
+        return null;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
