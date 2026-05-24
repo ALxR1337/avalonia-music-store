@@ -19,7 +19,7 @@ The Player page currently duplicates all playback controls already present in th
 
 - **Playlists**: `Playlist`/`PlaylistTrack` models exist in DB but there is no `IPlaylistService` and no UI for managing playlists. "Add to playlist" requires building the entire playlists feature first; deferred to a separate task.
 - **Lyrics**: explicitly rejected by user — no lyrics feature in the program.
-- **Dedicated Artist page**: artist link navigates to Catalog with an artist filter (added in this task); no new artist detail view.
+- **Dedicated Artist page**: artist link navigates to SearchResults filtered by artist; no new artist detail view.
 
 ## Layout
 
@@ -60,7 +60,7 @@ The sidebar stays exactly as it is — purchased albums + "Додати файл
 - Cover 160×160 (down from 280×280), left.
 - Right side, vertical stack:
   - **Title** (`h2` class) — `Album.Title` (or `Track.Title` when no album).
-  - **Artist** (linkable text/button) — `Album.Artist.Name`. Click → navigate to Catalog with the artist filter applied.
+  - **Artist** (linkable text/button) — `Album.Artist.Name`. Click → `NavigateTo(SearchResults, "виконавець:\"<name>\"")`.
   - **Metadata strip** — `Year · Genre · TrackCount · TotalDuration` (sum of track durations).
   - **Action row** — three icon-buttons:
     - **Like (album)** — ♥ toggle, persists to `AlbumLikes`.
@@ -90,7 +90,7 @@ The sidebar stays exactly as it is — purchased albums + "Додати файл
 ### 4. Більше від артиста
 
 - Horizontal `ScrollViewer`+`ItemsControl` of other albums by the same artist (`ArtistId` match, exclude current `AlbumId`).
-- Tile: cover thumbnail + album title. Click → navigate to Catalog filtered by artist (same target as the header's artist link). User can then drill into a specific product.
+- Tile: cover thumbnail + album title. Click → SearchResults filtered by that artist (same target as the header's artist link). User can then drill into a specific product.
 - If artist has no other albums, the section is hidden.
 
 ### Empty / degraded states
@@ -166,12 +166,12 @@ event EventHandler? RepeatModeChanged;
 
 Toggling existing `ShuffleMode` / `RepeatMode` setters already persists; the events let the VM update `IsShuffleOn` / `RepeatMode` properties when toggled.
 
-### Catalog navigation: artist filter
+### Artist navigation (reuse SearchResults)
 
-- `CatalogViewModel` gains `int? ArtistFilterId` (and matching UI: a chip "Артист: Earl Sweatshirt ✕" near the top).
-- `NavigationService.NavigateTo(NavTarget.Catalog, artistId: int)` — the existing `parameter` argument is already an `object?`, so we route an int through it.
-- `CatalogViewModel.OnNavigated` reads the parameter and applies the filter.
-- Sample data check: confirm `Album.ArtistId` is populated so filtering works.
+- `SearchService` already parses `артист:`/`виконавець:`/`artist:` as a structured field (see `SearchQueryParser`).
+- "Go to artist" navigates to `NavTarget.SearchResults` with the query `виконавець:"<Artist Name>"`.
+- Same pattern is already used for genre tiles in `CatalogViewModel.OpenGenre` (passes `"жанр:<name>"`).
+- No changes to `CatalogViewModel` or `SearchService` required.
 
 ## ViewModel: `PlayerViewModel` changes
 
@@ -200,8 +200,7 @@ Toggling existing `ShuffleMode` / `RepeatMode` setters already persists; the eve
 | `Views/PlayerView.axaml` (+ .cs) | New layout per spec |
 | `ViewModels/MiniPlayerViewModel.cs` | Add `Progress` setter + `IsScrubbing` + `CommitSeek` |
 | `Views/MiniPlayerView.axaml` (+ .cs) | Replace `ProgressBar` with `Slider`, wire pointer events |
-| `ViewModels/CatalogViewModel.cs` | Add `ArtistFilterId` + filter logic + clear-chip |
-| `Views/CatalogView.axaml` | Show active artist-filter chip |
+| (no changes) | Artist nav reuses SearchResults via `виконавець:"name"` query |
 | `App.axaml.cs` | Register `ILikesService` in DI |
 | `Themes/Icons.axaml` | Add `IconShuffle`, `IconRepeat`, `IconRepeatOne` (verified missing). `IconHeart`/`IconHeartFilled`/`IconStar` already present. |
 
