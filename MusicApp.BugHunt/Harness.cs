@@ -53,6 +53,7 @@ public sealed class Harness
         var auth = new AuthService(dbFactory);
         var cart = new CartService(auth, dbFactory);
         var catalog = new CatalogService(dbFactory);
+        var likes = new LikesService(dbFactory);
         var search = new SearchService(dbFactory);
         var files = new FileDialogService();
         Trace("services-ready");
@@ -72,7 +73,7 @@ public sealed class Harness
         nav.Register(NavTarget.Orders,
             _ => new OrdersViewModel(catalog, auth));
         nav.Register(NavTarget.Player,
-            _ => new PlayerViewModel(player, catalog, auth));
+            _ => new PlayerViewModel(player, catalog, auth, likes, nav, files));
         nav.Register(NavTarget.Admin,
             _ => new AdminViewModel(catalog, files));
 

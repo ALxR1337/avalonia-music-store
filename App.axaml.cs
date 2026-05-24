@@ -28,6 +28,7 @@ public partial class App : Application
             var auth = new AuthService(dbFactory);
             var cart = new CartService(auth, dbFactory);
             var catalog = new CatalogService(dbFactory);
+            var likes = new LikesService(dbFactory);
             var search = new SearchService(dbFactory);
             var files = new FileDialogService();
             var player = new PlayerService(auth, dbFactory, catalog);
@@ -47,7 +48,7 @@ public partial class App : Application
             nav.Register(NavTarget.Orders,
                 _ => new OrdersViewModel(catalog, auth));
             nav.Register(NavTarget.Player,
-                _ => new PlayerViewModel(player, catalog, auth, files));
+                _ => new PlayerViewModel(player, catalog, auth, likes, nav, files));
             nav.Register(NavTarget.Admin,
                 _ => new AdminViewModel(catalog, files));
 
