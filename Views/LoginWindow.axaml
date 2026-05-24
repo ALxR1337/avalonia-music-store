@@ -7,6 +7,7 @@
         x:Class="MusicApp.Views.LoginWindow"
         x:DataType="vm:LoginViewModel"
         Title="Вхід"
+        Icon="avares://MusicApp/Assets/app-icon.png"
         Width="420" Height="520"
         Background="{StaticResource BgBaseBrush}"
         CanResize="False"
@@ -56,19 +57,19 @@
                     Content="Створити акаунт" IsVisible="{Binding IsRegistering}"
                     Command="{Binding LoginCommand}"/>
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button Grid.Column="0" Classes="secondary" Content="Реєстрація"
-                        HorizontalAlignment="Stretch"
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <TextBlock Text="Немає акаунту?" Classes="muted" VerticalAlignment="Center"
+                           IsVisible="{Binding !IsRegistering}"/>
+                <Button Classes="link-inline" Content="Реєстрація"
                         IsVisible="{Binding !IsRegistering}"
                         Command="{Binding ToggleModeCommand}"/>
-                <Button Grid.Column="0" Classes="secondary" Content="Назад до входу"
-                        HorizontalAlignment="Stretch"
+                <Button Classes="link-inline" Content="Назад до входу"
                         IsVisible="{Binding IsRegistering}"
                         Command="{Binding ToggleModeCommand}"/>
-                <Button Grid.Column="1" Classes="secondary"
-                        Content="Як гість" HorizontalAlignment="Stretch"
+                <TextBlock Text="·" Classes="muted" VerticalAlignment="Center"/>
+                <Button Classes="link-inline" Content="Продовжити як гість"
                         Command="{Binding GuestCommand}"/>
-            </Grid>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>

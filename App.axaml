@@ -13,11 +13,16 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://MusicApp/Themes/Colors.axaml" />
+                <ResourceInclude Source="avares://MusicApp/Themes/Icons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <conv:CoverPathToImageConverter x:Key="CoverPathToImage"/>
             <conv:AlbumIdToGradientBrushConverter x:Key="AlbumToGradient"/>
             <conv:FirstCharConverter x:Key="FirstChar"/>
             <conv:GenreToBrushConverter x:Key="GenreToBrush"/>
+            <conv:OrderStatusToUkrainianConverter x:Key="OrderStatusUa"/>
+            <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
+            <conv:SuggestionKindToIconConverter x:Key="SuggestionKindToIcon"/>
+            <conv:DoubleOffsetConverter x:Key="DoubleOffset"/>
         </ResourceDictionary>
     </Application.Resources>
 

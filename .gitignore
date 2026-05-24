@@ -23,3 +23,6 @@ MusicApp.zip
 *.db
 *.db-shm
 *.db-wal
+
+# Docs / notes
+*.md

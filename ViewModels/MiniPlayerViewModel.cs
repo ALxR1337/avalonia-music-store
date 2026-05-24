@@ -17,6 +17,7 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [ObservableProperty] private double _progress;
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private double _volume = 0.7;
+    [ObservableProperty] private MusicApp.Models.Album? _currentAlbum;
 
     public MiniPlayerViewModel(IPlayerService player, MainWindowViewModel shell)
     {
@@ -35,6 +36,7 @@ public partial class MiniPlayerViewModel : ViewModelBase
     {
         var t = _player.CurrentTrack;
         TrackTitle = t?.Title ?? "—";
+        CurrentAlbum = _player.CurrentAlbum;
         ArtistName = _player.CurrentAlbum?.Artist?.Name ?? "семпл 30 с";
         PositionText = Format(_player.Position);
         DurationText = Format(_player.Duration);

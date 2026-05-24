@@ -11,13 +11,28 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        ConfigureUkrainianCulture();
         ConfigureLinuxScaling();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    // Ukrainian (uk-UA) thread + default culture so dates render as "21.05.2026"
+    // and prices/numbers use the comma decimal sep + non-breaking-space thousand sep.
+    private static void ConfigureUkrainianCulture()
+    {
+        var culture = new CultureInfo("uk-UA");
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
     }
 
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            // XWayland's xdg_positioner translation mispositions/flickers popups;
+            // overlay-render keeps them inside the window. Linux-only, no-op elsewhere.
+            .With(new X11PlatformOptions { OverlayPopups = true })
 #if DEBUG
             .WithDeveloperTools()
 #endif

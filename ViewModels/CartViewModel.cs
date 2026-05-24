@@ -10,18 +10,22 @@ public partial class CartViewModel : ViewModelBase
 {
     private readonly ICartService _cart;
     private readonly INavigationService _nav;
+    private readonly IAuthService _auth;
 
     [ObservableProperty] private decimal _total;
     [ObservableProperty] private int _itemCount;
     [ObservableProperty] private bool _isEmpty;
     [ObservableProperty] private string? _flashMessage;
+    [ObservableProperty] private bool _isGuest;
 
-    public CartViewModel(ICartService cart, INavigationService nav)
+    public CartViewModel(ICartService cart, INavigationService nav, IAuthService auth)
     {
         _cart = cart;
         _nav = nav;
+        _auth = auth;
         Items = cart.Items;
         cart.CartChanged += (_, _) => Refresh();
+        auth.CurrentUserChanged += (_, _) => Refresh();
         Refresh();
     }
 
@@ -32,6 +36,7 @@ public partial class CartViewModel : ViewModelBase
         Total = _cart.Total;
         ItemCount = _cart.ItemCount;
         IsEmpty = _cart.Items.Count == 0;
+        IsGuest = !_auth.IsAuthenticated;
     }
 
     [RelayCommand]
@@ -47,8 +52,13 @@ public partial class CartViewModel : ViewModelBase
     private void Checkout()
     {
         if (_cart.Items.Count == 0) return;
+        if (!_auth.IsAuthenticated)
+        {
+            FlashMessage = "Будь ласка, увійдіть, щоб оформити замовлення.";
+            return;
+        }
         var order = _cart.Checkout();
-        FlashMessage = $"Замовлення створено. Сума: {order.TotalAmount:0} ₴";
+        FlashMessage = $"Замовлення №{order.Id} створено. Сума: {order.TotalAmount:0} ₴";
         _nav.NavigateTo(NavTarget.Orders);
     }
 }

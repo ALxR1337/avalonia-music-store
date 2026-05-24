@@ -1,0 +1,163 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MusicApp.ViewModels"
+        xmlns:m="using:MusicApp.Models"
+        x:Class="MusicApp.Views.ProductEditWindow"
+        x:DataType="vm:ProductEditViewModel"
+        Title="{Binding Title}"
+        Width="640" MinHeight="600" SizeToContent="Height"
+        Background="{StaticResource BgBaseBrush}"
+        WindowStartupLocation="CenterOwner"
+        WindowDecorations="BorderOnly"
+        CanResize="False">
+
+    <ScrollViewer>
+        <StackPanel Margin="28,20" Spacing="14">
+
+            <TextBlock Text="{Binding Title}" Classes="h2"/>
+
+            <!-- Album section (only when adding) -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14"
+                    IsVisible="{Binding IsAddMode}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Альбом" FontWeight="SemiBold"/>
+                    <CheckBox Content="Створити новий альбом" IsChecked="{Binding CreateNewAlbum}"/>
+                    <ComboBox ItemsSource="{Binding Albums}" SelectedItem="{Binding SelectedAlbum}"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="Виберіть існуючий альбом..."
+                              IsEnabled="{Binding !CreateNewAlbum}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="m:Album">
+                                <TextBlock Text="{Binding Title}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <StackPanel Spacing="6" IsVisible="{Binding CreateNewAlbum}">
+                        <TextBox Text="{Binding NewAlbumTitle}" PlaceholderText="Назва альбому"/>
+                        <NumericUpDown Value="{Binding NewAlbumYear}" Minimum="1900" Maximum="2100"
+                                       PlaceholderText="Рік" HorizontalAlignment="Stretch"/>
+                        <TextBox Text="{Binding NewAlbumDescription}" PlaceholderText="Опис (необов'язково)"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="50"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Artist section (only when adding) -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14"
+                    IsVisible="{Binding IsAddMode}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Виконавець" FontWeight="SemiBold"/>
+                    <CheckBox Content="Новий виконавець" IsChecked="{Binding CreateNewArtist}"/>
+                    <ComboBox ItemsSource="{Binding Artists}" SelectedItem="{Binding SelectedArtist}"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="Виберіть виконавця..."
+                              IsEnabled="{Binding !CreateNewArtist}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="m:Artist">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Text="{Binding NewArtistName}" PlaceholderText="Ім'я виконавця"
+                             IsVisible="{Binding CreateNewArtist}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Genre section (only when adding) -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14"
+                    IsVisible="{Binding IsAddMode}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Жанр" FontWeight="SemiBold"/>
+                    <CheckBox Content="Новий жанр" IsChecked="{Binding CreateNewGenre}"/>
+                    <ComboBox ItemsSource="{Binding Genres}" SelectedItem="{Binding SelectedGenre}"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="Виберіть жанр..."
+                              IsEnabled="{Binding !CreateNewGenre}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="m:Genre">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Text="{Binding NewGenreName}" PlaceholderText="Назва жанру"
+                             IsVisible="{Binding CreateNewGenre}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Product fields -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Параметри товару" FontWeight="SemiBold"/>
+                    <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                                    VerticalAlignment="Center">
+                            <RadioButton Content="Вініл LP" IsChecked="{Binding IsVinyl}" GroupName="ProductFormat"/>
+                            <RadioButton Content="CD" IsChecked="{Binding IsCd}" GroupName="ProductFormat"/>
+                        </StackPanel>
+                        <NumericUpDown Grid.Row="0" Grid.Column="2" Value="{Binding ReleaseYear}"
+                                       Minimum="1900" Maximum="2100" PlaceholderText="Рік випуску"
+                                       HorizontalAlignment="Stretch"/>
+
+                        <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Price}"
+                                       Minimum="0" Increment="10" FormatString="0.00"
+                                       PlaceholderText="Ціна, ₴" HorizontalAlignment="Stretch"/>
+                        <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding Stock}"
+                                       Minimum="0" PlaceholderText="Залишок"
+                                       HorizontalAlignment="Stretch"/>
+
+                        <TextBox Grid.Row="2" Grid.ColumnSpan="3" Text="{Binding Label}"
+                                 PlaceholderText="Лейбл (необов'язково)"/>
+                        <CheckBox Grid.Row="3" Grid.Column="0" Content="Активний"
+                                  IsChecked="{Binding IsActive}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- File pickers -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Медіафайли" FontWeight="SemiBold"/>
+                    <Grid ColumnDefinitions="100,*,Auto" RowDefinitions="Auto,Auto,Auto"
+                          RowSpacing="6" ColumnSpacing="8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Обкладинка:" Classes="muted"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CoverPath}" IsReadOnly="True"
+                                 PlaceholderText="не обрано"/>
+                        <Button Grid.Row="0" Grid.Column="2" Classes="ghost" Content="Огляд..."
+                                Command="{Binding PickCoverCommand}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Семпл:" Classes="muted"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SamplePath}" IsReadOnly="True"
+                                 PlaceholderText="не обрано"/>
+                        <Button Grid.Row="1" Grid.Column="2" Classes="ghost" Content="Огляд..."
+                                Command="{Binding PickSampleCommand}"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Повний трек:" Classes="muted"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FullPath}" IsReadOnly="True"
+                                 PlaceholderText="не обрано"/>
+                        <Button Grid.Row="2" Grid.Column="2" Classes="ghost" Content="Огляд..."
+                                Command="{Binding PickFullCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Action buttons -->
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,4,0,0">
+                <Button Classes="link-inline" Content="Скасувати"
+                        Command="{Binding CancelCommand}"/>
+                <Button Classes="primary" Content="Зберегти"
+                        Command="{Binding SaveCommand}"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

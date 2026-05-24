@@ -1,6 +1,21 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!--
+        Three button families — every new Button.X must belong to exactly one:
+
+          CTA   : primary, play-circle               (Accent bg, lightens on hover/press)
+          Row   : nav-item, ghost, chip-tab,         (Transparent/Chip bg, gains
+                  genre-tile, Border.card             #0FFFFFFF overlay on hover)
+          Link  : text-link, link-inline, icon       (Transparent bg, Foreground lightens
+                                                      on hover; icon also gains #0FFFFFFF)
+
+        The base Button style is intentionally "broken" — it sets only typography,
+        no Background/Padding/CornerRadius/BorderBrush. A classless <Button/> will
+        therefore inherit Fluent defaults and look wrong, forcing the author to pick
+        a class. Do not add Background or CornerRadius here.
+    -->
+
     <!-- Base text -->
     <Style Selector="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
@@ -48,54 +63,96 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
-    <!-- Generic Button reset (Fluent defaults are too bright on a dark surface) -->
-    <Style Selector="Button">
+    <!-- Borderless TextBox for embedded fields (search pill, inline filters).
+         The wrapping container is responsible for hover/focus chrome. -->
+    <Style Selector="TextBox.bare">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CaretBrush" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBox.bare /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.bare:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- Spotify-style search pill: subtle hover, white ring on focus-within.
+         BorderThickness held constant so layout doesn't shift when focus toggles —
+         the brush carries the state change instead. -->
+    <Style Selector="Border.search-pill">
+        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
-        <Setter Property="Padding" Value="14,8" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.search-pill:pointerover">
+        <Setter Property="BorderBrush" Value="#33FFFFFF" />
+        <Setter Property="Background" Value="{StaticResource BgElevatedHoverBrush}" />
+    </Style>
+    <Style Selector="Border.search-pill:focus-within">
+        <Setter Property="BorderBrush" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- PopupRoot is the top-level window that hosts every <Popup>'s content.
+         FluentTheme defaults its Background to an opaque region brush, which on
+         Linux paints a square rectangle behind popup content and clips off any
+         child Border's CornerRadius (Windows hides this via DWM composition).
+         Forcing the popup host to Transparent lets the child Border define
+         the visible shape on every platform. -->
+    <Style Selector="PopupRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Autocomplete popup as a pill extension: flat top corners merge with the
+         pill's straight bottom section; rounded bottom corners terminate the card.
+         Subtle outline on sides+bottom only — no top border so the seam reads as
+         continuous with the pill's bottom edge. -->
+    <Style Selector="Border.search-popup">
+        <Setter Property="Background" Value="{StaticResource BgElevatedHoverBrush}" />
+        <Setter Property="BorderBrush" Value="#55FFFFFF" />
+        <Setter Property="BorderThickness" Value="1,0,1,2" />
+        <Setter Property="CornerRadius" Value="0,0,24,24" />
+        <Setter Property="BoxShadow" Value="0 8 24 0 #80000000" />
+    </Style>
+
+    <!-- Base Button: typography only, no surface — forces every Button to pick a class -->
+    <Style Selector="Button">
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
+
+    <!-- ============================================================ -->
+    <!--                       CTA family                              -->
+    <!-- ============================================================ -->
 
     <!-- Primary CTA -->
     <Style Selector="Button.primary">
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
         <Setter Property="Foreground" Value="Black" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
         <Setter Property="Padding" Value="22,10" />
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
-        <Setter Property="RenderTransform" Value="scale(1.03)" />
     </Style>
     <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
-        <Setter Property="RenderTransform" Value="scale(0.98)" />
-    </Style>
-
-    <!-- Secondary outlined -->
-    <Style Selector="Button.secondary">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{StaticResource FgTertiaryBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-    </Style>
-    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#1AFFFFFF" />
-        <Setter Property="BorderBrush" Value="{StaticResource FgPrimaryBrush}" />
-    </Style>
-
-    <!-- Ghost / icon buttons -->
-    <Style Selector="Button.ghost">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
-        <Setter Property="Padding" Value="8" />
-    </Style>
-    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#1AFFFFFF" />
-        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
 
     <!-- Round play button (Spotify-style accent circle) -->
@@ -105,12 +162,19 @@
         <Setter Property="CornerRadius" Value="24" />
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
         <Setter Property="Foreground" Value="Black" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="Button.play-circle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
-        <Setter Property="RenderTransform" Value="scale(1.06)" />
     </Style>
+    <Style Selector="Button.play-circle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
+    </Style>
+
+    <!-- ============================================================ -->
+    <!--                       Row family                              -->
+    <!-- ============================================================ -->
 
     <!-- Sidebar item -->
     <Style Selector="Button.nav-item">
@@ -118,17 +182,38 @@
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
         <Setter Property="Padding" Value="14,10" />
-        <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="Background" Value="#0FFFFFFF" />
         <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
     <Style Selector="Button.nav-item.active">
-        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
+        <Setter Property="Background" Value="#1AFFFFFF" />
         <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+    </Style>
+
+    <!-- Ghost / utility row button -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#0FFFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.ghost:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#14FFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
 
     <!-- Chip / pill -->
@@ -141,9 +226,32 @@
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
     </Style>
 
+    <!-- Chip-tab (search-result filter pills, product-page LP/CD format toggle) -->
+    <Style Selector="Button.chip-tab">
+        <Setter Property="Background" Value="{StaticResource BgChipBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
+        <Setter Property="Padding" Value="14,5" />
+    </Style>
+    <Style Selector="Button.chip-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#0FFFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.chip-tab.active">
+        <Setter Property="Background" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="Foreground" Value="Black" />
+    </Style>
+    <Style Selector="Button.chip-tab.active TextBlock">
+        <Setter Property="Foreground" Value="Black" />
+    </Style>
+    <Style Selector="Button.chip-tab:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
     <!-- Card (album / product) -->
     <Style Selector="Border.card">
-        <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
         <Setter Property="Padding" Value="14" />
         <Setter Property="Transitions">
@@ -153,23 +261,18 @@
         </Setter>
     </Style>
     <Style Selector="Border.card:pointerover">
-        <Setter Property="Background" Value="{StaticResource BgCardHoverBrush}" />
+        <Setter Property="Background" Value="{StaticResource BgElevatedHoverBrush}" />
     </Style>
 
-    <!-- Genre tile -->
+    <!-- Genre tile (Row-family subset; structural extras live on Border.genre-card) -->
     <Style Selector="Button.genre-tile">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
-        <Setter Property="RenderTransform" Value="scale(1.0)" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
-            </Transitions>
-        </Setter>
     </Style>
     <Style Selector="Button.genre-tile /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
@@ -179,47 +282,19 @@
     <Style Selector="Button.genre-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="Button.genre-tile:pointerover">
-        <Setter Property="RenderTransform" Value="scale(1.04)" />
+    <!-- Inset accent border on hover -->
+    <Style Selector="Button.genre-tile Border.genre-card">
+        <Setter Property="BorderThickness" Value="0" />
     </Style>
-    <Style Selector="Button.genre-tile:pressed">
-        <Setter Property="RenderTransform" Value="scale(0.98)" />
-    </Style>
-    <Style Selector="Button.genre-tile Border.genre-ring">
-        <Setter Property="Opacity" Value="0" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-            </Transitions>
-        </Setter>
-    </Style>
-    <Style Selector="Button.genre-tile:pointerover Border.genre-ring">
-        <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="Button.genre-tile Border.genre-accent-bar">
-        <Setter Property="Opacity" Value="0.85" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-            </Transitions>
-        </Setter>
-    </Style>
-    <Style Selector="Button.genre-tile:pointerover Border.genre-accent-bar">
-        <Setter Property="Opacity" Value="1.0" />
-    </Style>
-    <Style Selector="Button.genre-tile TextBlock.genre-glyph">
-        <Setter Property="Opacity" Value="0.18" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-            </Transitions>
-        </Setter>
-    </Style>
-    <Style Selector="Button.genre-tile:pointerover TextBlock.genre-glyph">
-        <Setter Property="Opacity" Value="0.32" />
+    <Style Selector="Button.genre-tile:pointerover Border.genre-card">
+        <Setter Property="BorderThickness" Value="2" />
     </Style>
 
-    <!-- Text link: no rounded background, underline on hover -->
+    <!-- ============================================================ -->
+    <!--                       Link / Icon family                      -->
+    <!-- ============================================================ -->
+
+    <!-- Text link (album titles in cards): no rounded background, foreground lightens on hover -->
     <Style Selector="Button.text-link">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -234,15 +309,10 @@
     </Style>
     <Style Selector="Button.text-link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.text-link:pointerover TextBlock.title">
-        <Setter Property="TextDecorations" Value="Underline" />
-    </Style>
-    <Style Selector="Button.text-link:pointerover TextBlock.subtitle">
-        <Setter Property="TextDecorations" Value="Underline" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
 
-    <!-- Inline link: shrink to content width, underline on hover (e.g. "Показати всі") -->
+    <!-- Inline link (e.g. "Показати всі", "Реєстрація"): tight, foreground lightens on hover -->
     <Style Selector="Button.link-inline">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -262,9 +332,42 @@
     <Style Selector="Button.link-inline:pointerover">
         <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
-    <Style Selector="Button.link-inline:pointerover TextBlock">
-        <Setter Property="TextDecorations" Value="Underline" />
+
+    <!-- Icon button (32×32 round-corner: min/max/close, transport, chip-remove) -->
+    <Style Selector="Button.icon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+        <Setter Property="Padding" Value="0" />
     </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#0FFFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- Spotify-style circular pill (titlebar back/forward) -->
+    <Style Selector="Button.icon-pill">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Background" Value="#FF000000" />
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.icon-pill /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FF000000" />
+        <Setter Property="CornerRadius" Value="16" />
+    </Style>
+    <Style Selector="Button.icon-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FF2A2A2A" />
+    </Style>
+    <Style Selector="Button.icon-pill:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- ============================================================ -->
 
     <!-- ListBox / ListBoxItem -->
     <Style Selector="ListBox">
@@ -277,20 +380,173 @@
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
     </Style>
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="Background" Value="#0FFFFFFF" />
     </Style>
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="#2AFFFFFF" />
+        <Setter Property="Background" Value="#1AFFFFFF" />
     </Style>
 
     <!-- Slider -->
     <Style Selector="Slider">
         <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
     </Style>
+    <Style Selector="Slider /template/ Thumb">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="Slider /template/ Thumb:pointerover">
+        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+    </Style>
+    <Style Selector="Slider /template/ Thumb:pressed">
+        <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentPressedBrush}" />
+    </Style>
+
+    <!-- CheckBox: checked box uses the accent fill -->
+    <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="CheckBox:checked:pointerover /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+    </Style>
+
+    <!-- TabItem: accent pipe on selected, primary text -->
+    <Style Selector="TabItem">
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    </Style>
+
+    <!-- NumericUpDown spinner arrows: muted, lighten on hover -->
+    <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
 
     <!-- ScrollBar (slimmer, dark) -->
     <Style Selector="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!--
+        Path.icon — default Lucide-style 20×20 line icon.
+            <Path Classes="icon" Data="{StaticResource IconHome}"/>
+        Filled variants (heart, star, circle):
+            <Path Classes="icon filled" Data="{StaticResource IconHeartFilled}"/>
+        Override Width/Height per-site for non-20px sizes.
+    -->
+    <Style Selector="Path.icon">
+        <Setter Property="Stroke" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeJoin" Value="Round" />
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+    <Style Selector="Path.icon.filled">
+        <Setter Property="Fill" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <Style Selector="Path.icon.accent">
+        <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="Path.icon.accent.filled">
+        <Setter Property="Fill" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <Style Selector="Path.icon.primary">
+        <Setter Property="Stroke" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Path.icon.primary.filled">
+        <Setter Property="Fill" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <!-- When the parent Button is disabled, icons fade to FgDisabled. -->
+    <Style Selector="Button:disabled Path.icon">
+        <Setter Property="Stroke" Value="{StaticResource FgDisabledBrush}" />
+    </Style>
+    <Style Selector="Button:disabled Path.icon.filled">
+        <Setter Property="Fill" Value="{StaticResource FgDisabledBrush}" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <!-- Sized variants -->
+    <Style Selector="Path.icon.sm">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+    </Style>
+    <Style Selector="Path.icon.lg">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+    </Style>
+    <Style Selector="Path.icon.xl">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+    </Style>
+
+    <!-- Horizontal-shelf scroll-nav chevrons (Spotify-style overlay, fade in on row hover) -->
+    <Style Selector="Button.scroll-nav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.scroll-nav /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="24" />
+    </Style>
+    <Style Selector="Border.scroll-nav-circle">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Background" Value="#FF000000" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- Edge-fade vignettes (row dissolves into BgBase at the side that can still scroll) -->
+    <Style Selector="Border.scroll-fade">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.scroll-fade.show">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.scroll-nav:pointerover Border.scroll-nav-circle">
+        <Setter Property="Background" Value="#FF1F1F1F" />
+    </Style>
+    <Style Selector="Button.scroll-nav:pressed Border.scroll-nav-circle">
+        <Setter Property="Background" Value="#FF0A0A0A" />
+    </Style>
+    <Style Selector="Grid.scroll-row:pointerover Button.scroll-nav">
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="IsHitTestVisible" Value="True" />
     </Style>
 
 </Styles>

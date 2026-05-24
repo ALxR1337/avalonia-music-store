@@ -10,12 +10,30 @@
         <TextBlock Classes="h1"
                    Text="{Binding ItemCount, StringFormat='Кошик ({0})'}"/>
 
+        <!-- Flash message -->
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusS}" Padding="12,8"
+                IsVisible="{Binding FlashMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding FlashMessage}" Classes="muted"/>
+        </Border>
+
+        <!-- Guest banner -->
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusM}" Padding="14"
+                IsVisible="{Binding IsGuest}">
+            <TextBlock TextWrapping="Wrap" Classes="muted">
+                <Run Text="Ви переглядаєте кошик як гість. "/>
+                <Run Text="Для оформлення замовлення необхідно увійти в обліковий запис." FontWeight="SemiBold" Foreground="{StaticResource FgPrimaryBrush}"/>
+            </TextBlock>
+        </Border>
+
         <!-- Empty state -->
         <Border Background="{StaticResource BgElevatedBrush}"
                 CornerRadius="{StaticResource RadiusL}"
                 Padding="40" IsVisible="{Binding IsEmpty}">
             <StackPanel Spacing="10" HorizontalAlignment="Center">
-                <TextBlock Text="🛒" FontSize="48" HorizontalAlignment="Center" Opacity="0.6"/>
+                <Path Classes="icon xl" Data="{StaticResource IconCart}"
+                      HorizontalAlignment="Center" Opacity="0.6"/>
                 <TextBlock Text="У кошику поки що порожньо" Classes="h3"
                            HorizontalAlignment="Center"/>
                 <TextBlock Text="Знайдіть щось у каталозі і повертайтесь сюди"
@@ -33,10 +51,18 @@
                         <Grid ColumnDefinitions="60,*,Auto,Auto,Auto">
                             <Border Grid.Column="0" Width="48" Height="48"
                                     CornerRadius="{StaticResource RadiusS}"
-                                    Background="#FF2A2A2A">
-                                <TextBlock Text="💿" FontSize="22"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" Opacity="0.5"/>
+                                    Background="{Binding Product.Album, Converter={StaticResource AlbumToGradient}}"
+                                    ClipToBounds="True">
+                                <Grid>
+                                    <TextBlock Text="{Binding Product.Album.Title, Converter={StaticResource FirstChar}}"
+                                               FontSize="22" FontWeight="Bold" Opacity="0.45"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource FgPrimaryBrush}"
+                                               IsVisible="{Binding Product.Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                    <Image Source="{Binding Product.Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                           Stretch="UniformToFill"/>
+                                </Grid>
                             </Border>
 
                             <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="3">
@@ -50,16 +76,18 @@
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal"
                                         Spacing="8" VerticalAlignment="Center">
-                                <Button Classes="ghost" Content="−" Width="28" Height="28"
-                                        Padding="0"
+                                <Button Classes="icon" Width="28" Height="28"
                                         Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).DecreaseCommand}"
-                                        CommandParameter="{Binding}"/>
+                                        CommandParameter="{Binding}">
+                                    <Path Classes="icon sm" Data="{StaticResource IconMinus}"/>
+                                </Button>
                                 <TextBlock Text="{Binding Quantity}" MinWidth="20"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Button Classes="ghost" Content="+" Width="28" Height="28"
-                                        Padding="0"
+                                <Button Classes="icon" Width="28" Height="28"
                                         Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).IncreaseCommand}"
-                                        CommandParameter="{Binding}"/>
+                                        CommandParameter="{Binding}">
+                                    <Path Classes="icon sm" Data="{StaticResource IconPlus}"/>
+                                </Button>
                             </StackPanel>
 
                             <TextBlock Grid.Column="3"
@@ -68,10 +96,11 @@
                                        HorizontalAlignment="Right" VerticalAlignment="Center"
                                        Margin="16,0"/>
 
-                            <Button Grid.Column="4" Classes="ghost" Content="✕"
-                                    Width="32" Height="32" Padding="0"
+                            <Button Grid.Column="4" Classes="icon" Width="32" Height="32"
                                     Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).RemoveCommand}"
-                                    CommandParameter="{Binding}"/>
+                                    CommandParameter="{Binding}">
+                                <Path Classes="icon" Data="{StaticResource IconClose}"/>
+                            </Button>
                         </Grid>
                     </Border>
                 </DataTemplate>

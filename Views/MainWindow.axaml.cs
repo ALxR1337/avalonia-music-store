@@ -31,4 +31,11 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
             vm.SubmitSearchCommand.Execute(null);
     }
+
+    // Collapse sidebar to a 72px icon column when the window is narrower than 1100px.
+    private void OnRootSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.IsSidebarCollapsed = e.NewSize.Width < 1100;
+    }
 }

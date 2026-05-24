@@ -24,7 +24,6 @@
     <Color x:Key="DividerSoft">#FF1F1F1F</Color>
 
     <Color x:Key="Danger">#FFE25555</Color>
-    <Color x:Key="Success">#FF1DB954</Color>
 
     <SolidColorBrush x:Key="BgBaseBrush" Color="{StaticResource BgBase}" />
     <SolidColorBrush x:Key="BgSidebarBrush" Color="{StaticResource BgSidebar}" />
@@ -48,7 +47,6 @@
     <SolidColorBrush x:Key="DividerSoftBrush" Color="{StaticResource DividerSoft}" />
 
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Danger}" />
-    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource Success}" />
 
     <!-- Radii / spacing tokens -->
     <CornerRadius x:Key="RadiusS">4</CornerRadius>

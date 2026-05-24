@@ -11,7 +11,7 @@
         <Border Background="{StaticResource BgElevatedBrush}"
                 CornerRadius="{StaticResource RadiusM}" Padding="16">
             <Grid RowDefinitions="Auto,*">
-                <Grid Grid.Row="0" ColumnDefinitions="80,140,180,180,*"
+                <Grid Grid.Row="0" ColumnDefinitions="80,140,180,160,*,Auto"
                       Margin="6,0,6,8">
                     <TextBlock Grid.Column="0" Classes="tiny" Text="№"/>
                     <TextBlock Grid.Column="1" Classes="tiny" Text="ДАТА"/>
@@ -26,29 +26,66 @@
                             <Border Padding="6,12"
                                     BorderBrush="{StaticResource DividerSoftBrush}"
                                     BorderThickness="0,1,0,0">
-                                <Grid ColumnDefinitions="80,140,180,180,*">
+                                <Grid ColumnDefinitions="80,140,180,160,*,Auto" VerticalAlignment="Center">
                                     <TextBlock Grid.Column="0"
                                                Text="{Binding Id}"
-                                               FontWeight="SemiBold"/>
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
-                                               Classes="muted"/>
-                                    <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left">
-                                        <TextBlock Text="{Binding Status}" FontSize="11"/>
+                                               Classes="muted"
+                                               VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Status, Converter={StaticResource OrderStatusUa}}" FontSize="11"/>
                                     </Border>
                                     <TextBlock Grid.Column="3"
                                                Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
                                                Foreground="{StaticResource AccentBrush}"
-                                               FontWeight="SemiBold"/>
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="4"
                                                Text="{Binding Items.Count, StringFormat='{}{0} позицій'}"
-                                               Classes="muted"/>
+                                               Classes="muted"
+                                               VerticalAlignment="Center"/>
+                                    <Button Grid.Column="5" Classes="ghost" Content="Деталі →"
+                                            Command="{Binding $parent[ItemsControl].((vm:OrdersViewModel)DataContext).ToggleDetailsCommand}"
+                                            CommandParameter="{Binding}"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
+        </Border>
+
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusM}" Padding="16"
+                IsVisible="{Binding ExpandedOrder, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="h3"
+                           Text="{Binding ExpandedOrder.Id, StringFormat='Деталі замовлення №{0}'}"/>
+                <ItemsControl ItemsSource="{Binding ExpandedOrder.Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:OrderItem">
+                            <Grid ColumnDefinitions="*,80,Auto,Auto" Margin="0,3">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Product.Album.Artist.Name}"
+                                               Classes="muted" FontSize="11"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}" Classes="muted"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Quantity, StringFormat='× {0}'}"
+                                           Classes="muted" Margin="10,0"/>
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
+                                           Foreground="{StaticResource AccentBrush}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </Border>
     </StackPanel>
 </UserControl>

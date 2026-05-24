@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MusicApp.ViewModels"
         xmlns:views="using:MusicApp.Views"
+        xmlns:conv="using:MusicApp.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -9,6 +10,7 @@
         x:Class="MusicApp.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Музичний магазин"
+        Icon="avares://MusicApp/Assets/app-icon.png"
         Width="1280" Height="800"
         MinWidth="1024" MinHeight="640"
         Background="{StaticResource BgBaseBrush}"
@@ -21,78 +23,149 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="48,*,Auto" ColumnDefinitions="240,*">
+    <Grid RowDefinitions="48,*,Auto" ColumnDefinitions="Auto,*"
+          SizeChanged="OnRootSizeChanged">
 
         <!-- ============ TITLE BAR ============ -->
         <Border Grid.Row="0" Grid.ColumnSpan="2"
                 Background="{StaticResource BgSidebarBrush}"
                 PointerPressed="OnTitleBarPressed">
-            <Grid ColumnDefinitions="240,*,Auto" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
 
-                <!-- Brand -->
+                <!-- Global back/forward -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal"
-                            Spacing="10" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <Border Background="{StaticResource AccentBrush}"
-                            CornerRadius="6" Width="22" Height="22"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="♪" Foreground="Black" FontSize="14"
-                                   FontWeight="Bold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <TextBlock Text="Музичний магазин" FontWeight="Bold" FontSize="14"
-                               VerticalAlignment="Center"/>
+                            Spacing="8" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <Button Classes="icon-pill"
+                            Command="{Binding GoBackCommand}"
+                            IsEnabled="{Binding CanGoBack}">
+                        <Path Classes="icon sm primary" Data="{StaticResource IconChevronLeft}"/>
+                    </Button>
+                    <Button Classes="icon-pill"
+                            Command="{Binding GoForwardCommand}"
+                            IsEnabled="{Binding CanGoForward}">
+                        <Path Classes="icon sm primary" Data="{StaticResource IconChevronRight}"/>
+                    </Button>
                 </StackPanel>
 
-                <!-- Centered search -->
-                <Border Grid.Column="1" Background="{StaticResource BgElevatedBrush}"
-                        CornerRadius="{StaticResource RadiusPill}"
-                        Padding="14,6" MaxWidth="520" Height="34"
+                <!-- Centered search + autocomplete popup -->
+                <Border Grid.Column="1" Classes="search-pill"
+                        Padding="14,0" MaxWidth="520" Height="40"
                         HorizontalAlignment="Stretch" Margin="20,0">
                     <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Grid.Column="0" Text="🔍" FontSize="13"
-                                   Foreground="{StaticResource FgSecondaryBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Grid.Column="1"
-                                 Background="Transparent" BorderThickness="0"
-                                 Padding="0" MinHeight="0"
+                        <Path Grid.Column="0" Classes="icon sm primary"
+                              Data="{StaticResource IconSearch}"
+                              VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Grid.Column="1" Classes="bare"
+                                 MinHeight="0"
                                  PlaceholderText="Виконавці, альбоми, треки..."
-                                 Text="{Binding SearchQuery}"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalAlignment="Center"
                                  VerticalContentAlignment="Center"
                                  KeyDown="OnSearchKeyDown"/>
+                        <Popup Grid.Column="1"
+                               PlacementTarget="{Binding $parent[Border]}"
+                               Placement="Bottom"
+                               IsOpen="{Binding IsAutocompleteOpen}"
+                               IsLightDismissEnabled="True"
+                               WindowManagerAddShadowHint="False">
+                            <!-- Width = pill width minus 40 (its pill-end diameter at the bottom)
+                                 so the popup's flat top sits inside the pill's straight bottom
+                                 section and doesn't poke past the rounded ends. -->
+                            <Border Width="{Binding $parent[Popup].PlacementTarget.Bounds.Width, Converter={StaticResource DoubleOffset}, ConverterParameter=-40}"
+                                    Classes="search-popup"
+                                    Padding="6">
+                                <ItemsControl ItemsSource="{Binding Suggestions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Classes="ghost"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch"
+                                                    Padding="10,6"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).PickSuggestionCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <Border Grid.Column="0" Width="32" Height="32"
+                                                            Margin="0,0,10,0"
+                                                            Background="{StaticResource BgChipBrush}"
+                                                            CornerRadius="16"
+                                                            ClipToBounds="True">
+                                                        <Grid>
+                                                            <Path Classes="icon sm primary"
+                                                                  Data="{Binding Kind, Converter={StaticResource SuggestionKindToIcon}}"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                            <Image Source="{Binding ImagePath, Converter={StaticResource CoverPathToImage}}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Grid>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock Text="{Binding Text}" FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Popup>
                     </Grid>
                 </Border>
 
                 <!-- User + window buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                             VerticalAlignment="Center" Margin="0,0,8,0">
-                    <Border Background="{StaticResource BgElevatedBrush}"
+
+                    <Button Classes="primary" Content="Увійти"
+                            Command="{Binding OpenLoginCommand}"
+                            IsVisible="{Binding IsGuest}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0" Padding="14,4"/>
+
+                    <Border Background="{StaticResource BgElevatedHoverBrush}"
                             CornerRadius="{StaticResource RadiusPill}"
-                            Padding="10,4" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Ellipse Width="22" Height="22" Fill="{StaticResource AccentBrush}"/>
+                            Padding="4,4,12,4" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="22" Height="22" CornerRadius="11"
+                                    Background="{StaticResource BgChipBrush}">
+                                <Grid>
+                                    <Path Data="{StaticResource IconUser}"
+                                          Fill="Transparent"
+                                          Stroke="{StaticResource FgPrimaryBrush}"
+                                          StrokeThickness="1.5"
+                                          StrokeLineCap="Round" StrokeJoin="Round"
+                                          Width="14" Height="14" Stretch="Uniform"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          IsVisible="{Binding IsGuest}"/>
+                                    <TextBlock Text="{Binding UserDisplayName, Converter={StaticResource FirstChar}}"
+                                               FontSize="12" FontWeight="Bold"
+                                               Foreground="{StaticResource FgPrimaryBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsGuest}"/>
+                                </Grid>
+                            </Border>
                             <TextBlock Text="{Binding UserDisplayName}"
+                                       Foreground="{StaticResource FgSecondaryBrush}"
                                        VerticalAlignment="Center" FontSize="13"/>
                         </StackPanel>
                     </Border>
 
-                    <Button Classes="ghost" Width="36" Height="32"
-                            Click="OnMinimize" CornerRadius="6"
-                            ToolTip.Tip="Згорнути">
+                    <Button Classes="icon" Width="36" Height="32"
+                            Click="OnMinimize">
                         <Path Stroke="{StaticResource FgSecondaryBrush}"
                               StrokeThickness="1.4"
                               Data="M 0,6 L 12,6"/>
                     </Button>
-                    <Button Classes="ghost" Width="36" Height="32"
-                            Click="OnMaximize" CornerRadius="6"
-                            ToolTip.Tip="Розгорнути">
+                    <Button Classes="icon" Width="36" Height="32"
+                            Click="OnMaximize">
                         <Path Stroke="{StaticResource FgSecondaryBrush}"
                               StrokeThickness="1.4"
                               Data="M 0.7,0.7 L 11.3,0.7 L 11.3,11.3 L 0.7,11.3 Z"/>
                     </Button>
-                    <Button Classes="ghost" Width="36" Height="32"
-                            Click="OnClose" CornerRadius="6"
-                            ToolTip.Tip="Закрити">
+                    <Button Classes="icon" Width="36" Height="32"
+                            Click="OnClose">
                         <Path Stroke="{StaticResource FgSecondaryBrush}"
                               StrokeThickness="1.4"
                               Data="M 0.7,0.7 L 11.3,11.3 M 11.3,0.7 L 0.7,11.3"/>
@@ -104,59 +177,76 @@
         <!-- ============ SIDEBAR ============ -->
         <Border Grid.Row="1" Grid.Column="0"
                 Background="{StaticResource BgSidebarBrush}"
-                Padding="12,16">
+                Padding="12,16"
+                Width="{Binding IsSidebarCollapsed, Converter={x:Static conv:BoolToWidthConverter.Instance}, ConverterParameter=72|240}">
             <StackPanel Spacing="4">
-                <TextBlock Classes="tiny" Text="МАГАЗИН" Margin="14,0,0,8"/>
-                <Button Classes="nav-item"
+                <TextBlock Classes="tiny" Text="МАГАЗИН" Margin="14,0,0,8"
+                           IsVisible="{Binding !IsSidebarCollapsed}"/>
+                <Button Classes="nav-item" Classes.active="{Binding IsCatalogActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Catalog">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="🏠" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Каталог" VerticalAlignment="Center"/>
+                        <Path Classes="icon" Data="{StaticResource IconHome}"/>
+                        <TextBlock Text="Каталог" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
-                <Button Classes="nav-item"
+                <Button Classes="nav-item" Classes.active="{Binding IsCartActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Cart">
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="🛒" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Кошик" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                        <Path Grid.Column="0" Classes="icon" Data="{StaticResource IconCart}"
+                              VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <TextBlock Grid.Column="1" Text="Кошик" VerticalAlignment="Center"
+                                   IsVisible="{Binding !IsSidebarCollapsed}"/>
+                        <Border Grid.Column="2" Classes="chip accent" Padding="6,1"
+                                IsVisible="{Binding HasCartItems}"
+                                VerticalAlignment="Center" Margin="6,0,0,0">
+                            <TextBlock Text="{Binding CartCount}" FontSize="10"
+                                       Foreground="Black" FontWeight="Bold"/>
+                        </Border>
+                    </Grid>
                 </Button>
-                <Button Classes="nav-item"
+                <Button Classes="nav-item" Classes.active="{Binding IsOrdersActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Orders">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="📦" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Замовлення" VerticalAlignment="Center"/>
+                        <Path Classes="icon" Data="{StaticResource IconBox}"/>
+                        <TextBlock Text="Замовлення" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
-                <Button Classes="nav-item"
+                <Button Classes="nav-item" Classes.active="{Binding IsProfileActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Profile">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="👤" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Профіль" VerticalAlignment="Center"/>
+                        <Path Classes="icon" Data="{StaticResource IconUser}"/>
+                        <TextBlock Text="Профіль" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
 
                 <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}" Margin="10,12"/>
 
-                <TextBlock Classes="tiny" Text="МЕДІАТЕКА" Margin="14,4,0,8"/>
-                <Button Classes="nav-item"
+                <TextBlock Classes="tiny" Text="МЕДІАТЕКА" Margin="14,4,0,8"
+                           IsVisible="{Binding !IsSidebarCollapsed}"/>
+                <Button Classes="nav-item" Classes.active="{Binding IsPlayerActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Player">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="🎧" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Плеєр" VerticalAlignment="Center"/>
+                        <Path Classes="icon" Data="{StaticResource IconHeadphones}"/>
+                        <TextBlock Text="Плеєр" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
 
                 <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}" Margin="10,12"
                            IsVisible="{Binding IsAdmin}"/>
-                <TextBlock Classes="tiny" Text="АДМІН" Margin="14,4,0,8"
-                           IsVisible="{Binding IsAdmin}"/>
-                <Button Classes="nav-item"
+                <TextBlock Classes="tiny" Text="АДМІН" Margin="14,4,0,8">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="IsAdmin"/>
+                            <Binding Path="!IsSidebarCollapsed"/>
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
+                <Button Classes="nav-item" Classes.active="{Binding IsAdminActive}"
                         IsVisible="{Binding IsAdmin}"
                         Command="{Binding NavigateCommand}" CommandParameter="Admin">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="⚙" FontSize="16" VerticalAlignment="Center" Width="20" TextAlignment="Center"/>
-                        <TextBlock Text="Керування" VerticalAlignment="Center"/>
+                        <Path Classes="icon" Data="{StaticResource IconSettings}"/>
+                        <TextBlock Text="Керування" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -175,7 +265,24 @@
                 BorderBrush="{StaticResource DividerBrush}"
                 BorderThickness="0,1,0,0"
                 Height="72"
-                IsVisible="{Binding IsMiniPlayerVisible}">
+                IsVisible="{Binding IsMiniPlayerVisible}"
+                RenderTransformOrigin="0.5,0.5">
+            <Border.Styles>
+                <Style Selector="Border">
+                    <Setter Property="Opacity" Value="0"/>
+                    <Setter Property="RenderTransform" Value="translateY(72px)"/>
+                </Style>
+                <Style Selector="Border[IsVisible=true]">
+                    <Setter Property="Opacity" Value="1"/>
+                    <Setter Property="RenderTransform" Value="translateY(0)"/>
+                </Style>
+            </Border.Styles>
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25"/>
+                </Transitions>
+            </Border.Transitions>
             <views:MiniPlayerView DataContext="{Binding MiniPlayer}"/>
         </Border>
     </Grid>

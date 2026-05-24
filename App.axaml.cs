@@ -19,30 +19,37 @@ public partial class App : Application
         {
             var dbFactory = new MusicStoreDbContextFactory();
             using (var db = dbFactory.CreateDbContext())
+            {
                 DbSeeder.EnsureSeeded(db);
+                Fts5Initializer.Ensure(db);
+            }
 
             var nav = new NavigationService();
             var auth = new AuthService(dbFactory);
             var cart = new CartService(auth, dbFactory);
-            var player = new PlayerService();
             var catalog = new CatalogService(dbFactory);
+            var search = new SearchService(dbFactory);
+            var files = new FileDialogService();
+            var player = new PlayerService(auth, dbFactory, catalog);
+
+            desktop.Exit += (_, _) => player.Dispose();
 
             nav.Register(NavTarget.Catalog,
                 _ => new CatalogViewModel(catalog, nav, player, cart));
             nav.Register(NavTarget.SearchResults,
-                param => new SearchResultsViewModel(catalog, nav, player, cart, param as string ?? string.Empty));
+                param => new SearchResultsViewModel(search, nav, player, cart, auth, param as string ?? string.Empty));
             nav.Register(NavTarget.Product,
-                param => new ProductViewModel(catalog, cart, player, (int)(param ?? 1)));
+                param => new ProductViewModel(catalog, cart, player, nav, auth, (int)(param ?? 1)));
             nav.Register(NavTarget.Cart,
-                _ => new CartViewModel(cart, nav));
+                _ => new CartViewModel(cart, nav, auth));
             nav.Register(NavTarget.Profile,
-                _ => new ProfileViewModel(auth, catalog));
+                _ => new ProfileViewModel(auth, catalog, search, nav));
             nav.Register(NavTarget.Orders,
                 _ => new OrdersViewModel(catalog, auth));
             nav.Register(NavTarget.Player,
-                _ => new PlayerViewModel(player, catalog));
+                _ => new PlayerViewModel(player, catalog, auth, files));
             nav.Register(NavTarget.Admin,
-                _ => new AdminViewModel(catalog));
+                _ => new AdminViewModel(catalog, files));
 
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
@@ -53,7 +60,7 @@ public partial class App : Application
             {
                 var mainWindow = new MainWindow
                 {
-                    DataContext = new MainWindowViewModel(nav, auth, cart, player, catalog)
+                    DataContext = new MainWindowViewModel(nav, auth, cart, player, catalog, search)
                 };
                 mainWindow.Show();
                 desktop.MainWindow = mainWindow;
