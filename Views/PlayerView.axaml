@@ -231,7 +231,7 @@
                                 <TextBlock Text="Ваша оцінка" Classes="muted"/>
                                 <NumericUpDown Value="{Binding NewReviewRating}" Minimum="1" Maximum="5" Increment="1"/>
                                 <TextBox Text="{Binding NewReviewText}" AcceptsReturn="True"
-                                         Watermark="Що ви думаєте про цей альбом?"
+                                         PlaceholderText="Що ви думаєте про цей альбом?"
                                          MinHeight="80"/>
                                 <Button Classes="primary" Content="Надіслати"
                                         Command="{Binding SubmitReviewCommand}"/>
