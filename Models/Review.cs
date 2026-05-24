@@ -11,4 +11,8 @@ public class Review
     public string Text { get; set; } = string.Empty;
     public int Rating { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Not mapped: populated by ICatalogService.GetReviewsByUser so the profile UI
+    // can show which product/album the review belongs to without an extra round-trip.
+    public Product? Product { get; set; }
 }

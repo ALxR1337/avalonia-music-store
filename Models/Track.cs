@@ -12,6 +12,16 @@ public class Track
     public TimeSpan Duration { get; set; }
     public string? SamplePath { get; set; }
     public string? FullPath { get; set; }
+    public int SampleStartSeconds { get; set; }
 
-    public string DurationDisplay => Duration.ToString(@"m\:ss");
+    public string DurationDisplay
+    {
+        get
+        {
+            if (Duration <= TimeSpan.Zero) return string.Empty;
+            return Duration.TotalHours >= 1
+                ? Duration.ToString(@"h\:mm\:ss")
+                : Duration.ToString(@"m\:ss");
+        }
+    }
 }

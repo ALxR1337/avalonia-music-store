@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MusicApp.Data;
 
@@ -10,9 +11,11 @@ using MusicApp.Data;
 namespace MusicApp.Data.Migrations
 {
     [DbContext(typeof(MusicStoreDbContext))]
-    partial class MusicStoreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260521145522_AddPlayerSettingsSearchHistorySavedSearches")]
+    partial class AddPlayerSettingsSearchHistorySavedSearches
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
@@ -33,6 +36,9 @@ namespace MusicApp.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("GenreId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -45,31 +51,11 @@ namespace MusicApp.Data.Migrations
 
                     b.HasIndex("ArtistId");
 
+                    b.HasIndex("GenreId");
+
                     b.HasIndex("Title");
 
                     b.ToTable("Albums");
-                });
-
-            modelBuilder.Entity("MusicApp.Models.AlbumGenre", b =>
-                {
-                    b.Property<int>("AlbumId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("GenreId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("AlbumId", "GenreId");
-
-                    b.HasIndex("AlbumId")
-                        .IsUnique()
-                        .HasFilter("\"IsPrimary\" = 1");
-
-                    b.HasIndex("GenreId");
-
-                    b.ToTable("AlbumGenres");
                 });
 
             modelBuilder.Entity("MusicApp.Models.Artist", b =>
@@ -142,8 +128,7 @@ namespace MusicApp.Data.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -162,26 +147,13 @@ namespace MusicApp.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ShippingAddress")
-                        .HasMaxLength(400)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("TotalAmountCents")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("UserEmail")
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("DECIMAL(10,2)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
@@ -201,37 +173,17 @@ namespace MusicApp.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("AlbumTitle")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ArtistName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FormatLabel")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("OrderId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ProductTitle")
-                        .IsRequired()
-                        .HasMaxLength(240)
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("UnitPriceCents")
-                        .HasColumnType("INTEGER");
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("DECIMAL(10,2)");
 
                     b.HasKey("Id");
 
@@ -263,8 +215,6 @@ namespace MusicApp.Data.Migrations
 
                     b.HasKey("UserId");
 
-                    b.HasIndex("LastTrackId");
-
                     b.ToTable("PlayerSettings");
                 });
 
@@ -292,27 +242,6 @@ namespace MusicApp.Data.Migrations
                     b.ToTable("Playlists");
                 });
 
-            modelBuilder.Entity("MusicApp.Models.PlaylistTrack", b =>
-                {
-                    b.Property<int>("PlaylistId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TrackId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("PlaylistId", "TrackId");
-
-                    b.HasIndex("TrackId");
-
-                    b.HasIndex("PlaylistId", "Position")
-                        .IsUnique();
-
-                    b.ToTable("PlaylistTracks");
-                });
-
             modelBuilder.Entity("MusicApp.Models.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -334,8 +263,8 @@ namespace MusicApp.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("PriceCents")
-                        .HasColumnType("INTEGER");
+                    b.Property<decimal>("Price")
+                        .HasColumnType("DECIMAL(10,2)");
 
                     b.Property<double>("Rating")
                         .HasColumnType("REAL");
@@ -494,8 +423,7 @@ namespace MusicApp.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AlbumId", "Position")
-                        .IsUnique();
+                    b.HasIndex("AlbumId");
 
                     b.ToTable("Tracks");
                 });
@@ -530,8 +458,7 @@ namespace MusicApp.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
-                        .IsUnique();
+                    b.HasIndex("Email");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -539,29 +466,19 @@ namespace MusicApp.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("MusicApp.Models.Wishlist", b =>
+            modelBuilder.Entity("PlaylistTrack", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("PlaylistId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ProductId")
+                    b.Property<int>("TracksId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                    b.HasKey("PlaylistId", "TracksId");
 
-                    b.HasKey("Id");
+                    b.HasIndex("TracksId");
 
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("UserId", "ProductId")
-                        .IsUnique();
-
-                    b.ToTable("Wishlists");
+                    b.ToTable("PlaylistTrack");
                 });
 
             modelBuilder.Entity("MusicApp.Models.Album", b =>
@@ -572,24 +489,13 @@ namespace MusicApp.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Artist");
-                });
-
-            modelBuilder.Entity("MusicApp.Models.AlbumGenre", b =>
-                {
-                    b.HasOne("MusicApp.Models.Album", "Album")
-                        .WithMany("AlbumGenres")
-                        .HasForeignKey("AlbumId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("MusicApp.Models.Genre", "Genre")
                         .WithMany()
                         .HasForeignKey("GenreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Album");
+                    b.Navigation("Artist");
 
                     b.Navigation("Genre");
                 });
@@ -602,22 +508,7 @@ namespace MusicApp.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("MusicApp.Models.Order", b =>
-                {
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("MusicApp.Models.OrderItem", b =>
@@ -637,48 +528,6 @@ namespace MusicApp.Data.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("MusicApp.Models.PlayerSettings", b =>
-                {
-                    b.HasOne("MusicApp.Models.Track", null)
-                        .WithMany()
-                        .HasForeignKey("LastTrackId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("MusicApp.Models.Playlist", b =>
-                {
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("MusicApp.Models.PlaylistTrack", b =>
-                {
-                    b.HasOne("MusicApp.Models.Playlist", "Playlist")
-                        .WithMany("Tracks")
-                        .HasForeignKey("PlaylistId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MusicApp.Models.Track", "Track")
-                        .WithMany()
-                        .HasForeignKey("TrackId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Playlist");
-
-                    b.Navigation("Track");
-                });
-
             modelBuilder.Entity("MusicApp.Models.Product", b =>
                 {
                     b.HasOne("MusicApp.Models.Album", "Album")
@@ -690,39 +539,6 @@ namespace MusicApp.Data.Migrations
                     b.Navigation("Album");
                 });
 
-            modelBuilder.Entity("MusicApp.Models.Review", b =>
-                {
-                    b.HasOne("MusicApp.Models.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("MusicApp.Models.SavedSearch", b =>
-                {
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("MusicApp.Models.SearchHistory", b =>
-                {
-                    b.HasOne("MusicApp.Models.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("MusicApp.Models.Track", b =>
                 {
                     b.HasOne("MusicApp.Models.Album", null)
@@ -732,38 +548,29 @@ namespace MusicApp.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MusicApp.Models.Wishlist", b =>
+            modelBuilder.Entity("PlaylistTrack", b =>
                 {
-                    b.HasOne("MusicApp.Models.Product", "Product")
+                    b.HasOne("MusicApp.Models.Playlist", null)
                         .WithMany()
-                        .HasForeignKey("ProductId")
+                        .HasForeignKey("PlaylistId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MusicApp.Models.User", null)
+                    b.HasOne("MusicApp.Models.Track", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("TracksId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("MusicApp.Models.Album", b =>
                 {
-                    b.Navigation("AlbumGenres");
-
                     b.Navigation("Tracks");
                 });
 
             modelBuilder.Entity("MusicApp.Models.Order", b =>
                 {
                     b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("MusicApp.Models.Playlist", b =>
-                {
-                    b.Navigation("Tracks");
                 });
 #pragma warning restore 612, 618
         }

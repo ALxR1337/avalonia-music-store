@@ -1,13 +1,13 @@
 using System;
-using System.Collections.Generic;
 
 namespace MusicApp.Models;
 
-public class Playlist
+public class SavedSearch
 {
     public int Id { get; set; }
     public int UserId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string QueryJson { get; set; } = string.Empty;
+    public bool NotifyOnNew { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public List<PlaylistTrack> Tracks { get; set; } = new();
 }
