@@ -23,6 +23,11 @@
             <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
             <conv:SuggestionKindToIconConverter x:Key="SuggestionKindToIcon"/>
             <conv:DoubleOffsetConverter x:Key="DoubleOffset"/>
+            <conv:BoolToHeartIconConverter x:Key="BoolToHeartIcon"/>
+            <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+            <conv:RepeatModeToIconConverter x:Key="RepeatModeToIcon"/>
+            <conv:RepeatModeToOpacityConverter x:Key="RepeatModeToOpacity"/>
+            <conv:BoolToHighlightBrushConverter x:Key="BoolToHighlightBrush"/>
         </ResourceDictionary>
     </Application.Resources>
 
