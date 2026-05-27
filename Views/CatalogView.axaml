@@ -31,18 +31,18 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:GenreTile">
                                 <Button Classes="genre-tile"
-                                        Width="160" Margin="0,0,14,0"
+                                        Width="200" Margin="0,0,18,0"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenGenreCommand}"
                                         CommandParameter="{Binding Genre}">
                                     <Border Classes="genre-card"
-                                            Width="160" Height="160"
+                                            Width="200" Height="200"
                                             CornerRadius="{StaticResource RadiusM}"
                                             Background="{Binding Genre, Converter={StaticResource GenreToBrush}}"
                                             BorderBrush="{StaticResource AccentBrush}"
                                             ClipToBounds="True">
                                         <Grid>
                                             <TextBlock Text="{Binding Name, Converter={StaticResource FirstChar}}"
-                                                       FontSize="72" FontWeight="Bold" Opacity="0.5"
+                                                       FontSize="90" FontWeight="Bold" Opacity="0.5"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
                                                        Foreground="{StaticResource FgPrimaryBrush}"
@@ -53,16 +53,16 @@
 
                                             <Path Fill="{Binding Genre, Converter={StaticResource GenreToBrush}, ConverterParameter=accent}"
                                                   Stretch="None"
-                                                  Data="M 0,160 L 140,160 L 0,70 Z"
+                                                  Data="M 0,200 L 176,200 L 0,88 Z"
                                                   HorizontalAlignment="Left"
                                                   VerticalAlignment="Bottom"/>
 
                                             <TextBlock Text="{Binding Name}"
-                                                       FontWeight="Bold" FontSize="16"
+                                                       FontWeight="Bold" FontSize="20"
                                                        Foreground="White"
                                                        HorizontalAlignment="Left"
                                                        VerticalAlignment="Bottom"
-                                                       Margin="12,0,0,10"/>
+                                                       Margin="16,0,0,14"/>
                                         </Grid>
                                     </Border>
                                 </Button>
@@ -74,7 +74,7 @@
                 <!-- Edge fade vignettes: row visually dissolves into BgBase when there's more to scroll -->
                 <Border x:Name="GenreFadeLeft"
                         Classes="scroll-fade"
-                        Width="96" Height="160"
+                        Width="120" Height="200"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         IsHitTestVisible="False">
@@ -87,7 +87,7 @@
                 </Border>
                 <Border x:Name="GenreFadeRight"
                         Classes="scroll-fade"
-                        Width="96" Height="160"
+                        Width="120" Height="200"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         IsHitTestVisible="False">
@@ -103,14 +103,14 @@
                         Classes="scroll-nav"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        Margin="-8,58,0,0"
+                        Margin="-10,74,0,0"
                         Click="OnGenreScrollLeft">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronLeft}"
                               Stroke="{StaticResource FgPrimaryBrush}"
                               StrokeThickness="2.5"
                               StrokeLineCap="Round" StrokeJoin="Round"
-                              Width="22" Height="22" Stretch="Uniform"
+                              Width="28" Height="28" Stretch="Uniform"
                               Fill="Transparent"
                               HorizontalAlignment="Center" VerticalAlignment="Center"
                               Margin="0,0,2,0"/>
@@ -120,14 +120,14 @@
                         Classes="scroll-nav"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
-                        Margin="0,58,-8,0"
+                        Margin="0,74,-10,0"
                         Click="OnGenreScrollRight">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronRight}"
                               Stroke="{StaticResource FgPrimaryBrush}"
                               StrokeThickness="2.5"
                               StrokeLineCap="Round" StrokeJoin="Round"
-                              Width="22" Height="22" Stretch="Uniform"
+                              Width="28" Height="28" Stretch="Uniform"
                               Fill="Transparent"
                               HorizontalAlignment="Center" VerticalAlignment="Center"
                               Margin="2,0,0,0"/>
@@ -151,7 +151,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="m:NewArrivalAlbum">
-                        <Border Classes="card" Width="200" Margin="0,0,14,14">
+                        <Border Classes="card" Width="250" Margin="0,0,18,18">
                             <Border.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuItem Header="Додати LP в кошик"
@@ -167,15 +167,15 @@
                                               CommandParameter="{Binding PrimaryProduct}"/>
                                 </MenuFlyout>
                             </Border.ContextFlyout>
-                            <StackPanel Spacing="10">
+                            <StackPanel Spacing="12">
                                 <Grid>
-                                    <Border Width="172" Height="172"
+                                    <Border Width="215" Height="215"
                                             CornerRadius="{StaticResource RadiusM}"
                                             Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
                                             ClipToBounds="True">
                                         <Grid>
                                             <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
-                                                       FontSize="64" FontWeight="Bold" Opacity="0.45"
+                                                       FontSize="80" FontWeight="Bold" Opacity="0.45"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
                                                        Foreground="{StaticResource FgPrimaryBrush}"
@@ -187,37 +187,37 @@
                                     <Button Classes="play-circle"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Bottom"
-                                            Margin="0,0,6,6"
+                                            Margin="0,0,8,8"
                                             Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).QuickPreviewCommand}"
                                             CommandParameter="{Binding PrimaryProduct}">
                                         <Path Data="{StaticResource IconPlay}" Fill="Black" Stroke="Transparent"
-                                              Width="18" Height="18" Stretch="Uniform"/>
+                                              Width="22" Height="22" Stretch="Uniform"/>
                                     </Button>
                                 </Grid>
                                 <Button Classes="text-link"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
                                         CommandParameter="{Binding PrimaryProduct}">
-                                    <StackPanel Spacing="2">
+                                    <StackPanel Spacing="3">
                                         <TextBlock Classes="title"
                                                    Text="{Binding Album.Title}"
-                                                   FontWeight="SemiBold" FontSize="14"
+                                                   FontWeight="SemiBold" FontSize="18"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock Classes="subtitle muted"
                                                    Text="{Binding Album.Artist.Name}"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                 </Button>
-                                <StackPanel Spacing="4">
+                                <StackPanel Spacing="6">
                                     <Button Classes="ghost"
-                                            Padding="6,4" HorizontalContentAlignment="Stretch"
+                                            Padding="8,6" HorizontalContentAlignment="Stretch"
                                             HorizontalAlignment="Stretch"
                                             IsVisible="{Binding HasVinyl}"
                                             Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
                                             CommandParameter="{Binding Vinyl}">
                                         <Grid ColumnDefinitions="Auto,*">
-                                            <Border Grid.Column="0" Classes="chip" Padding="6,2"
-                                                    Margin="0,0,8,0">
-                                                <TextBlock Text="LP" FontSize="11"
+                                            <Border Grid.Column="0" Classes="chip" Padding="8,2"
+                                                    Margin="0,0,10,0">
+                                                <TextBlock Text="LP" FontSize="14"
                                                            Foreground="{StaticResource FgSecondaryBrush}"/>
                                             </Border>
                                             <TextBlock Grid.Column="1"
@@ -228,15 +228,15 @@
                                         </Grid>
                                     </Button>
                                     <Button Classes="ghost"
-                                            Padding="6,4" HorizontalContentAlignment="Stretch"
+                                            Padding="8,6" HorizontalContentAlignment="Stretch"
                                             HorizontalAlignment="Stretch"
                                             IsVisible="{Binding HasCd}"
                                             Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
                                             CommandParameter="{Binding Cd}">
                                         <Grid ColumnDefinitions="Auto,*">
-                                            <Border Grid.Column="0" Classes="chip" Padding="6,2"
-                                                    Margin="0,0,8,0">
-                                                <TextBlock Text="CD" FontSize="11"
+                                            <Border Grid.Column="0" Classes="chip" Padding="8,2"
+                                                    Margin="0,0,10,0">
+                                                <TextBlock Text="CD" FontSize="14"
                                                            Foreground="{StaticResource FgSecondaryBrush}"/>
                                             </Border>
                                             <TextBlock Grid.Column="1"
@@ -265,15 +265,15 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="m:Product">
-                        <Border Classes="card" Width="190" Margin="0,0,14,14">
-                            <StackPanel Spacing="10">
-                                <Border Width="162" Height="162"
+                        <Border Classes="card" Width="238" Margin="0,0,18,18">
+                            <StackPanel Spacing="12">
+                                <Border Width="202" Height="202"
                                         CornerRadius="{StaticResource RadiusM}"
                                         Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
                                         ClipToBounds="True">
                                     <Grid>
                                         <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
-                                                   FontSize="60" FontWeight="Bold" Opacity="0.45"
+                                                   FontSize="76" FontWeight="Bold" Opacity="0.45"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    Foreground="{StaticResource FgPrimaryBrush}"
@@ -285,17 +285,17 @@
                                 <Button Classes="text-link"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
                                         CommandParameter="{Binding}">
-                                    <StackPanel Spacing="2">
+                                    <StackPanel Spacing="3">
                                         <TextBlock Classes="title"
                                                    Text="{Binding Album.Title}"
-                                                   FontWeight="SemiBold" FontSize="14"
+                                                   FontWeight="SemiBold" FontSize="18"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock Classes="subtitle muted"
                                                    Text="{Binding Album.Artist.Name}"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                 </Button>
-                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Path Classes="icon sm filled" Data="{StaticResource IconStar}"
                                           VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding Rating, StringFormat='{}{0:0.0}'}"

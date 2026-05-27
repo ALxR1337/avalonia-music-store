@@ -10,7 +10,43 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Tunneling: we get the key before any focused control (e.g. an icon
+        // Button that still has focus from the last click) can act on it.
+        AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
     }
+
+    private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // Escape closes the fullscreen cover overlay first — anything else
+        // (modal-like) can chain in here later.
+        if (e.Key == Key.Escape && vm.IsCoverFullscreen)
+        {
+            vm.CloseCoverFullscreenCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key != Key.Space) return;
+
+        // Don't steal the space character from text inputs.
+        if (FocusManager?.GetFocusedElement() is TextBox) return;
+
+        vm.TogglePlayPauseCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    private void OnCoverBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.CloseCoverFullscreenCommand.Execute(null);
+    }
+
+    // Swallow clicks on the image itself so they don't bubble to the backdrop
+    // and close the overlay.
+    private void OnCoverImagePressed(object? sender, PointerPressedEventArgs e)
+        => e.Handled = true;
 
     private void OnTitleBarPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -32,10 +68,10 @@ public partial class MainWindow : Window
             vm.SubmitSearchCommand.Execute(null);
     }
 
-    // Collapse sidebar to a 72px icon column when the window is narrower than 1100px.
+    // Collapse sidebar to a 90px icon column when the window is narrower than 1376px.
     private void OnRootSizeChanged(object? sender, SizeChangedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
-            vm.IsSidebarCollapsed = e.NewSize.Width < 1100;
+            vm.IsSidebarCollapsed = e.NewSize.Width < 1376;
     }
 }

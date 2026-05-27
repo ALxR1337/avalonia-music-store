@@ -11,8 +11,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Музичний магазин"
         Icon="avares://MusicApp/Assets/app-icon.png"
-        Width="1280" Height="800"
-        MinWidth="1024" MinHeight="640"
+        Width="1600" Height="1000"
+        MinWidth="1280" MinHeight="800"
         Background="{StaticResource BgBaseBrush}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="-1"
@@ -23,7 +23,7 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="48,*,Auto" ColumnDefinitions="Auto,*"
+    <Grid RowDefinitions="60,*,Auto" ColumnDefinitions="Auto,*"
           SizeChanged="OnRootSizeChanged">
 
         <!-- ============ TITLE BAR ============ -->
@@ -49,7 +49,7 @@
 
                 <!-- Centered search + autocomplete popup -->
                 <Border Grid.Column="1" Classes="search-pill"
-                        Padding="14,0" MaxWidth="520" Height="40"
+                        Padding="18,0" MaxWidth="650" Height="50"
                         HorizontalAlignment="Stretch" Margin="20,0">
                     <Grid ColumnDefinitions="Auto,*">
                         <Path Grid.Column="0" Classes="icon sm primary"
@@ -71,23 +71,23 @@
                             <!-- Width = pill width minus 40 (its pill-end diameter at the bottom)
                                  so the popup's flat top sits inside the pill's straight bottom
                                  section and doesn't poke past the rounded ends. -->
-                            <Border Width="{Binding $parent[Popup].PlacementTarget.Bounds.Width, Converter={StaticResource DoubleOffset}, ConverterParameter=-40}"
+                            <Border Width="{Binding $parent[Popup].PlacementTarget.Bounds.Width, Converter={StaticResource DoubleOffset}, ConverterParameter=-50}"
                                     Classes="search-popup"
-                                    Padding="6">
+                                    Padding="8">
                                 <ItemsControl ItemsSource="{Binding Suggestions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Button Classes="ghost"
                                                     HorizontalContentAlignment="Stretch"
                                                     HorizontalAlignment="Stretch"
-                                                    Padding="10,6"
+                                                    Padding="14,8"
                                                     Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).PickSuggestionCommand}"
                                                     CommandParameter="{Binding}">
                                                 <Grid ColumnDefinitions="Auto,*">
-                                                    <Border Grid.Column="0" Width="32" Height="32"
-                                                            Margin="0,0,10,0"
+                                                    <Border Grid.Column="0" Width="40" Height="40"
+                                                            Margin="0,0,12,0"
                                                             Background="{StaticResource BgChipBrush}"
-                                                            CornerRadius="16"
+                                                            CornerRadius="20"
                                                             ClipToBounds="True">
                                                         <Grid>
                                                             <Path Classes="icon sm primary"
@@ -102,7 +102,7 @@
                                                     <StackPanel Grid.Column="1" Spacing="2">
                                                         <TextBlock Text="{Binding Text}" FontWeight="SemiBold"
                                                                    TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11"/>
+                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="14"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
@@ -122,13 +122,13 @@
                             Command="{Binding OpenLoginCommand}"
                             IsVisible="{Binding IsGuest}"
                             VerticalAlignment="Center"
-                            Margin="0,0,8,0" Padding="14,4"/>
+                            Margin="0,0,8,0" Padding="18,6"/>
 
                     <Border Background="{StaticResource BgElevatedHoverBrush}"
                             CornerRadius="{StaticResource RadiusPill}"
-                            Padding="4,4,12,4" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Width="22" Height="22" CornerRadius="11"
+                            Padding="6,6,16,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="28" Height="28" CornerRadius="14"
                                     Background="{StaticResource BgChipBrush}">
                                 <Grid>
                                     <Path Data="{StaticResource IconUser}"
@@ -136,11 +136,11 @@
                                           Stroke="{StaticResource FgPrimaryBrush}"
                                           StrokeThickness="1.5"
                                           StrokeLineCap="Round" StrokeJoin="Round"
-                                          Width="14" Height="14" Stretch="Uniform"
+                                          Width="18" Height="18" Stretch="Uniform"
                                           HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsVisible="{Binding IsGuest}"/>
                                     <TextBlock Text="{Binding UserDisplayName, Converter={StaticResource FirstChar}}"
-                                               FontSize="12" FontWeight="Bold"
+                                               FontSize="16" FontWeight="Bold"
                                                Foreground="{StaticResource FgPrimaryBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                IsVisible="{Binding !IsGuest}"/>
@@ -148,7 +148,7 @@
                             </Border>
                             <TextBlock Text="{Binding UserDisplayName}"
                                        Foreground="{StaticResource FgSecondaryBrush}"
-                                       VerticalAlignment="Center" FontSize="13"/>
+                                       VerticalAlignment="Center" FontSize="16"/>
                         </StackPanel>
                     </Border>
 
@@ -177,8 +177,8 @@
         <!-- ============ SIDEBAR ============ -->
         <Border Grid.Row="1" Grid.Column="0"
                 Background="{StaticResource BgSidebarBrush}"
-                Padding="12,16"
-                Width="{Binding IsSidebarCollapsed, Converter={x:Static conv:BoolToWidthConverter.Instance}, ConverterParameter=72|240}">
+                Padding="16,20"
+                Width="{Binding IsSidebarCollapsed, Converter={x:Static conv:BoolToWidthConverter.Instance}, ConverterParameter=90|300}">
             <StackPanel Spacing="4">
                 <TextBlock Classes="tiny" Text="МАГАЗИН" Margin="14,0,0,8"
                            IsVisible="{Binding !IsSidebarCollapsed}"/>
@@ -196,10 +196,10 @@
                               VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <TextBlock Grid.Column="1" Text="Кошик" VerticalAlignment="Center"
                                    IsVisible="{Binding !IsSidebarCollapsed}"/>
-                        <Border Grid.Column="2" Classes="chip accent" Padding="6,1"
+                        <Border Grid.Column="2" Classes="chip accent" Padding="8,2"
                                 IsVisible="{Binding HasCartItems}"
                                 VerticalAlignment="Center" Margin="6,0,0,0">
-                            <TextBlock Text="{Binding CartCount}" FontSize="10"
+                            <TextBlock Text="{Binding CartCount}" FontSize="12"
                                        Foreground="Black" FontWeight="Bold"/>
                         </Border>
                     </Grid>
@@ -264,13 +264,13 @@
                 Background="{StaticResource BgPlayerBrush}"
                 BorderBrush="{StaticResource DividerBrush}"
                 BorderThickness="0,1,0,0"
-                Height="72"
+                Height="90"
                 IsVisible="{Binding IsMiniPlayerVisible}"
                 RenderTransformOrigin="0.5,0.5">
             <Border.Styles>
                 <Style Selector="Border">
                     <Setter Property="Opacity" Value="0"/>
-                    <Setter Property="RenderTransform" Value="translateY(72px)"/>
+                    <Setter Property="RenderTransform" Value="translateY(90px)"/>
                 </Style>
                 <Style Selector="Border[IsVisible=true]">
                     <Setter Property="Opacity" Value="1"/>
@@ -284,6 +284,39 @@
                 </Transitions>
             </Border.Transitions>
             <views:MiniPlayerView DataContext="{Binding MiniPlayer}"/>
+        </Border>
+
+        <!-- ============ FULLSCREEN COVER OVERLAY ============
+             Spans the whole window. Click on the dark backdrop closes;
+             clicks on the image itself are swallowed in code-behind.
+             Esc also closes via OnGlobalKeyDown. The 1*/8*/1* Grid gives the
+             requested ~10% margin on each side; Viewbox scales the square
+             cover Border to fit while preserving its 1:1 aspect ratio. -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="2"
+                Background="#CC000000"
+                IsVisible="{Binding IsCoverFullscreen}"
+                ZIndex="1000"
+                PointerPressed="OnCoverBackdropPressed">
+            <Grid RowDefinitions="*,8*,*" ColumnDefinitions="*,8*,*">
+                <Viewbox Grid.Row="1" Grid.Column="1" Stretch="Uniform">
+                    <Border Width="750" Height="750"
+                            CornerRadius="{StaticResource RadiusL}"
+                            ClipToBounds="True"
+                            PointerPressed="OnCoverImagePressed"
+                            Background="{Binding FullscreenCoverAlbum, Converter={StaticResource AlbumToGradient}}"
+                            BoxShadow="0 24 64 0 #99000000">
+                        <Grid>
+                            <TextBlock Text="{Binding FullscreenCoverAlbum.Title, Converter={StaticResource FirstChar}}"
+                                       FontSize="275" FontWeight="Bold" Opacity="0.45"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{StaticResource FgPrimaryBrush}"
+                                       IsVisible="{Binding FullscreenCoverAlbum.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            <Image Source="{Binding FullscreenCoverAlbum.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                   Stretch="UniformToFill"/>
+                        </Grid>
+                    </Border>
+                </Viewbox>
+            </Grid>
         </Border>
     </Grid>
 </Window>

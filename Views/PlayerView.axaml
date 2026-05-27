@@ -6,159 +6,182 @@
              x:DataType="vm:PlayerViewModel"
              Name="PlayerRoot">
 
-    <Grid ColumnDefinitions="280,*">
+    <Grid>
 
-        <!-- Library sidebar -->
-        <Border Grid.Column="0" Background="{StaticResource BgElevatedBrush}"
-                Padding="14,20" Margin="20,20,10,20"
-                CornerRadius="{StaticResource RadiusM}">
-            <StackPanel Spacing="14">
-                <TextBlock Classes="tiny" Text="КУПЛЕНІ АЛЬБОМИ"/>
-                <ItemsControl ItemsSource="{Binding PurchasedAlbums}"
-                              IsVisible="{Binding HasPurchasedAlbums}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="m:Album">
-                            <Button Classes="nav-item"
-                                    Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).PlayAlbumCommand}"
-                                    CommandParameter="{Binding}">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <Border Width="36" Height="36"
-                                            CornerRadius="{StaticResource RadiusS}"
-                                            Background="{Binding ., Converter={StaticResource AlbumToGradient}}"
-                                            ClipToBounds="True">
-                                        <Grid>
-                                            <TextBlock Text="{Binding Title, Converter={StaticResource FirstChar}}"
-                                                       FontSize="16" FontWeight="Bold" Opacity="0.45"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="{StaticResource FgPrimaryBrush}"
-                                                       IsVisible="{Binding CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                            <Image Source="{Binding CoverPath, Converter={StaticResource CoverPathToImage}}"
-                                                   Stretch="UniformToFill"/>
-                                        </Grid>
-                                    </Border>
-                                    <StackPanel Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Artist.Name}" Classes="muted" FontSize="11"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Classes="muted"
-                           Text="Поки немає куплених альбомів. Купіть щось у каталозі."
-                           TextWrapping="Wrap"
-                           IsVisible="{Binding !HasPurchasedAlbums}"
-                           Margin="2,4,2,4"/>
-
-                <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}" Margin="0,10"/>
-
-                <Button Classes="ghost" Content="+ Додати файли"
-                        HorizontalAlignment="Stretch"
-                        Command="{Binding AddLocalFilesCommand}"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Main content -->
-        <Grid Grid.Column="1" Margin="10,20,20,20">
-            <!-- Empty state -->
-            <Border CornerRadius="{StaticResource RadiusL}"
-                    IsVisible="{Binding !HasTrack}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                        <GradientStop Offset="0" Color="#FF1F1F1F"/>
-                        <GradientStop Offset="1" Color="#FF121212"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <StackPanel Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Path Classes="icon xl" Data="{StaticResource IconHeadphones}"
-                          Width="96" Height="96" Opacity="0.4"
-                          HorizontalAlignment="Center"/>
-                    <TextBlock Classes="h3" Text="Нічого не грає" HorizontalAlignment="Center"/>
-                    <TextBlock Classes="muted"
-                               Text="Виберіть альбом зі списку зліва або додайте свої файли"
-                               TextAlignment="Center" TextWrapping="Wrap"
-                               MaxWidth="320" HorizontalAlignment="Center"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Album context (scrollable) -->
-            <ScrollViewer IsVisible="{Binding HasTrack}"
+        <!-- Main content: single column spanning between the app sidebar and the
+             right edge. The previous in-page "Куплені альбоми" sidebar was
+             removed — the library lives entirely in the grid view now. -->
+        <Grid Margin="20,20,20,20">
+            <!-- Home: tile grid of purchased albums + "add" tile -->
+            <ScrollViewer IsVisible="{Binding !HasSelectedAlbum}"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="28" Margin="32,24,32,24" MaxWidth="1100" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="20" Margin="32,24,32,24">
+                    <TextBlock Classes="h2" Text="Ваша бібліотека"/>
+                    <ItemsControl ItemsSource="{Binding PurchasedAlbums}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" ItemWidth="226" ItemHeight="300"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="m:Album">
+                                <Button Classes="ghost" Padding="10" Margin="0,0,16,16"
+                                        Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).OpenAlbumCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Spacing="12" Width="196">
+                                        <Border Width="196" Height="196"
+                                                CornerRadius="{StaticResource RadiusS}"
+                                                Background="{Binding ., Converter={StaticResource AlbumToGradient}}"
+                                                ClipToBounds="True"
+                                                BoxShadow="0 6 18 0 #66000000">
+                                            <Grid>
+                                                <TextBlock Text="{Binding Title, Converter={StaticResource FirstChar}}"
+                                                           FontSize="70" FontWeight="Bold" Opacity="0.45"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource FgPrimaryBrush}"
+                                                           IsVisible="{Binding CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                <Image Source="{Binding CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                                       Stretch="UniformToFill"/>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Artist.Name}" Classes="muted" FontSize="14"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- "+ add" tile, same card footprint as albums -->
+                    <Button Classes="ghost" Padding="10"
+                            HorizontalAlignment="Left"
+                            Command="{Binding AddLocalFilesCommand}">
+                        <StackPanel Spacing="12" Width="196">
+                            <Border Width="196" Height="196"
+                                    CornerRadius="{StaticResource RadiusS}"
+                                    Background="{StaticResource BgElevatedBrush}"
+                                    BorderBrush="{StaticResource DividerSoftBrush}"
+                                    BorderThickness="1">
+                                <TextBlock Text="+"
+                                           FontSize="80" FontWeight="Light"
+                                           Foreground="{StaticResource FgSecondaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Додати файли / плейлист / папку"
+                                       FontSize="14" Classes="muted"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Classes="muted"
+                               Text="Поки немає куплених альбомів. Купіть щось у каталозі або додайте локальні файли."
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding !HasPurchasedAlbums}"
+                               MaxWidth="600"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Album context (scrollable) -->
+            <ScrollViewer IsVisible="{Binding HasSelectedAlbum}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="28" Margin="32,24,32,24" MaxWidth="1376" HorizontalAlignment="Stretch">
 
                     <!-- ===== Header ===== -->
-                    <Grid ColumnDefinitions="240,*">
-                        <Border Grid.Column="0" Width="240" Height="240"
+                    <Grid ColumnDefinitions="300,*">
+                        <!-- Cover acts as a button → opens fullscreen overlay on the shell. -->
+                        <Button Grid.Column="0" Width="300" Height="300"
+                                Padding="0" Background="Transparent" BorderThickness="0"
+                                Cursor="Hand"
                                 CornerRadius="{StaticResource RadiusL}"
-                                ClipToBounds="True"
-                                Background="{Binding CurrentAlbumForCover, Converter={StaticResource AlbumToGradient}}"
-                                BoxShadow="0 12 32 0 #66000000">
-                            <Grid>
-                                <TextBlock Text="{Binding HeaderTitle, Converter={StaticResource FirstChar}}"
-                                           FontSize="86" FontWeight="Bold" Opacity="0.45"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Foreground="{StaticResource FgPrimaryBrush}"
-                                           IsVisible="{Binding CurrentAlbumForCover.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                <Image Source="{Binding CurrentAlbumForCover.CoverPath, Converter={StaticResource CoverPathToImage}}"
-                                       Stretch="UniformToFill"/>
-                            </Grid>
-                        </Border>
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenCoverFullscreenCommand}"
+                                CommandParameter="{Binding SelectedAlbum}"
+                                ToolTip.Tip="Розгорнути обкладинку">
+                            <Border CornerRadius="{StaticResource RadiusL}"
+                                    ClipToBounds="True"
+                                    Background="{Binding SelectedAlbum, Converter={StaticResource AlbumToGradient}}"
+                                    BoxShadow="0 12 32 0 #66000000">
+                                <Grid>
+                                    <TextBlock Text="{Binding HeaderTitle, Converter={StaticResource FirstChar}}"
+                                               FontSize="108" FontWeight="Bold" Opacity="0.45"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{StaticResource FgPrimaryBrush}"
+                                               IsVisible="{Binding SelectedAlbum.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                    <Image Source="{Binding SelectedAlbum.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                           Stretch="UniformToFill"/>
+                                </Grid>
+                            </Border>
+                        </Button>
 
                         <StackPanel Grid.Column="1" Spacing="10"
                                     VerticalAlignment="Center"
                                     Margin="28,0,0,0">
-                            <TextBlock Classes="tiny" Text="АЛЬБОМ" IsVisible="{Binding HasAlbum}"/>
-                            <TextBlock Classes="tiny" Text="ЛОКАЛЬНИЙ ФАЙЛ" IsVisible="{Binding !HasAlbum}"/>
+                            <TextBlock Classes="tiny" Text="АЛЬБОМ"/>
 
-                            <TextBlock Classes="h1" Text="{Binding HeaderTitle}" TextWrapping="Wrap"/>
+                            <!-- Album title: linked to the album's catalog product when one exists,
+                                 otherwise rendered as plain text. -->
+                            <Button Classes="text-link" HorizontalAlignment="Left"
+                                    Command="{Binding GoToAlbumProductCommand}"
+                                    IsVisible="{Binding HasAlbumProduct}"
+                                    ToolTip.Tip="Відкрити в каталозі">
+                                <TextBlock Text="{Binding HeaderTitle}" Classes="h1" TextWrapping="Wrap"/>
+                            </Button>
+                            <TextBlock Classes="h1" Text="{Binding HeaderTitle}" TextWrapping="Wrap"
+                                       IsVisible="{Binding !HasAlbumProduct}"/>
 
                             <Button Classes="text-link" Padding="0" HorizontalAlignment="Left"
                                     Command="{Binding GoToArtistCommand}"
-                                    IsVisible="{Binding HasArtist}">
+                                    IsVisible="{Binding HasArtist}"
+                                    ToolTip.Tip="Усі альбоми артиста">
                                 <TextBlock Text="{Binding ArtistName}" Classes="h3"
                                            Foreground="{StaticResource FgSecondaryBrush}"/>
                             </Button>
 
-                            <TextBlock Classes="muted" Text="{Binding MetadataLine}"
-                                       Margin="0,4,0,0"
-                                       IsVisible="{Binding HasAlbum}"/>
-
-                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0"
-                                        IsVisible="{Binding HasAlbum}">
-                                <Path Classes="icon sm accent" Width="14" Height="14"
-                                      Data="{StaticResource IconHeadphones}"/>
-                                <TextBlock Text="{Binding NowPlayingLabel}"
-                                           Foreground="{StaticResource AccentBrush}"
-                                           FontSize="12" VerticalAlignment="Center"/>
+                            <!-- Metadata row: year · GENRE-LINK · trackcount · duration -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                                <TextBlock Text="{Binding AlbumYear}" Classes="muted"
+                                           IsVisible="{Binding HasYear}"/>
+                                <TextBlock Text="·" Classes="muted"
+                                           IsVisible="{Binding ShowYearSeparator}"/>
+                                <Button Classes="text-link"
+                                        Command="{Binding GoToGenreCommand}"
+                                        IsVisible="{Binding HasGenre}"
+                                        ToolTip.Tip="Каталог за жанром">
+                                    <TextBlock Text="{Binding AlbumGenre}" Classes="muted"/>
+                                </Button>
+                                <TextBlock Text="·" Classes="muted"
+                                           IsVisible="{Binding ShowGenreSeparator}"/>
+                                <TextBlock Text="{Binding AlbumTrackCount}" Classes="muted"
+                                           IsVisible="{Binding HasTrackCount}"/>
+                                <TextBlock Text="·" Classes="muted"
+                                           IsVisible="{Binding ShowTrackCountSeparator}"/>
+                                <TextBlock Text="{Binding AlbumTotalDuration}" Classes="muted"
+                                           IsVisible="{Binding HasTotalDuration}"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0"
-                                        IsVisible="{Binding HasAlbum}">
-                                <Button Classes="icon" Width="40" Height="40"
-                                        Command="{Binding ToggleAlbumLikeCommand}"
-                                        ToolTip.Tip="Подобається">
-                                    <Path Width="20" Height="20"
-                                          Classes="icon"
-                                          Classes.filled="{Binding IsAlbumLiked}"
-                                          Classes.accent="{Binding IsAlbumLiked}"
-                                          Data="{StaticResource IconHeart}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,20,0,0">
+                                <Button Classes="play-circle" Width="60" Height="60" CornerRadius="30"
+                                        Command="{Binding PlaySelectedAlbumCommand}"
+                                        ToolTip.Tip="Слухати альбом">
+                                    <Path Data="{StaticResource IconPlay}" Fill="Black" Stroke="Transparent"
+                                          Width="20" Height="20" Stretch="Uniform"/>
                                 </Button>
-                                <Button Classes="icon" Width="40" Height="40"
+                                <Button Classes="icon" Width="50" Height="50"
                                         Command="{Binding ToggleShuffleCommand}"
                                         ToolTip.Tip="Перемішати">
-                                    <Path Width="20" Height="20"
+                                    <Path Width="26" Height="26"
                                           Classes="icon"
                                           Classes.accent="{Binding IsShuffleOn}"
                                           Data="{StaticResource IconShuffle}"/>
                                 </Button>
-                                <Button Classes="icon" Width="40" Height="40"
+                                <Button Classes="icon" Width="50" Height="50"
                                         Command="{Binding CycleRepeatCommand}"
                                         ToolTip.Tip="Повтор">
-                                    <Path Width="20" Height="20"
+                                    <Path Width="26" Height="26"
                                           Classes="icon"
                                           Classes.accent="{Binding RepeatMode, Converter={StaticResource RepeatModeNotOff}}"
                                           Data="{Binding RepeatMode, Converter={StaticResource RepeatModeToIcon}}"/>
@@ -168,7 +191,7 @@
                     </Grid>
 
                     <!-- Description -->
-                    <StackPanel IsVisible="{Binding HasDescription}" Spacing="6" MaxWidth="780" HorizontalAlignment="Left">
+                    <StackPanel IsVisible="{Binding HasDescription}" Spacing="6" MaxWidth="976" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding AlbumDescription}" TextWrapping="Wrap"
                                    MaxLines="3" Classes="muted"
                                    IsVisible="{Binding !IsDescriptionExpanded}"/>
@@ -185,7 +208,7 @@
                     </StackPanel>
 
                     <!-- ===== Tracklist ===== -->
-                    <StackPanel Spacing="10" IsVisible="{Binding HasAlbum}">
+                    <StackPanel Spacing="10" IsVisible="{Binding HasSelectedAlbum}">
                         <TextBlock Text="Треки" Classes="h2"/>
                         <Border CornerRadius="{StaticResource RadiusM}"
                                 Background="{StaticResource BgElevatedBrush}"
@@ -193,9 +216,9 @@
                             <ItemsControl ItemsSource="{Binding Tracks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TrackRowViewModel">
-                                        <Border CornerRadius="{StaticResource RadiusS}" Padding="6,4" Margin="0,1"
+                                        <Border CornerRadius="{StaticResource RadiusS}" Padding="8,6" Margin="0,1"
                                                 Background="{Binding IsCurrent, Converter={StaticResource BoolToHighlightBrush}}">
-                                            <Grid ColumnDefinitions="36,*,Auto,Auto">
+                                            <Grid ColumnDefinitions="46,*,Auto,Auto">
                                                 <Grid Grid.Column="0">
                                                     <TextBlock Text="{Binding Position}"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -203,13 +226,13 @@
                                                                IsVisible="{Binding !IsCurrent}"/>
                                                     <Path Classes="icon sm accent filled"
                                                           Data="{StaticResource IconCircleFilled}"
-                                                          Width="10" Height="10"
+                                                          Width="14" Height="14"
                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
                                                           IsVisible="{Binding IsCurrent}"/>
                                                 </Grid>
                                                 <Button Grid.Column="1" Classes="ghost"
                                                         HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Left" Padding="8,6"
+                                                        HorizontalContentAlignment="Left" Padding="10,8"
                                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).PlayTrackCommand}"
                                                         CommandParameter="{Binding}">
                                                     <TextBlock Text="{Binding Title}"
@@ -217,10 +240,10 @@
                                                                Foreground="{Binding IsCurrent, Converter={StaticResource BoolToCurrentForeground}}"
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </Button>
-                                                <Button Grid.Column="2" Classes="icon" Width="32" Height="32"
+                                                <Button Grid.Column="2" Classes="icon" Width="40" Height="40"
                                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).ToggleTrackLikeCommand}"
                                                         CommandParameter="{Binding}">
-                                                    <Path Width="16" Height="16"
+                                                    <Path Width="20" Height="20"
                                                           Classes="icon"
                                                           Classes.filled="{Binding IsLiked}"
                                                           Classes.accent="{Binding IsLiked}"
@@ -228,78 +251,13 @@
                                                 </Button>
                                                 <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}"
                                                            Classes="muted" VerticalAlignment="Center"
-                                                           Margin="10,0,8,0" Width="42" TextAlignment="Right"/>
+                                                           Margin="12,0,10,0" Width="52" TextAlignment="Right"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Border>
-                    </StackPanel>
-
-                    <!-- ===== Reviews ===== -->
-                    <StackPanel Spacing="12" IsVisible="{Binding HasAlbum}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                                <TextBlock Text="Відгуки" Classes="h2"/>
-                                <TextBlock Text="{Binding RatingLabel}"
-                                           Classes="muted" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" Classes="primary"
-                                    Content="Залишити відгук"
-                                    Command="{Binding ToggleReviewFormCommand}"
-                                    IsVisible="{Binding CanLeaveReview}"/>
-                        </Grid>
-
-                        <Border IsVisible="{Binding IsReviewFormOpen}"
-                                CornerRadius="{StaticResource RadiusM}"
-                                Background="{StaticResource BgElevatedBrush}"
-                                Padding="14">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Ваша оцінка (1–5)" Classes="muted"/>
-                                <NumericUpDown Value="{Binding NewReviewRating}" Minimum="1" Maximum="5" Increment="1"
-                                               Width="120" HorizontalAlignment="Left"/>
-                                <TextBox Text="{Binding NewReviewText}" AcceptsReturn="True"
-                                         PlaceholderText="Що ви думаєте про цей альбом?"
-                                         MinHeight="80"/>
-                                <Button Classes="primary" Content="Надіслати"
-                                        HorizontalAlignment="Right"
-                                        Command="{Binding SubmitReviewCommand}"/>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Text="{Binding ReviewMessage}" Classes="muted"
-                                   IsVisible="{Binding ReviewMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-
-                        <ItemsControl ItemsSource="{Binding Reviews}" IsVisible="{Binding HasReviews}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="m:Review">
-                                    <Border Padding="14,12" Margin="0,4"
-                                            CornerRadius="{StaticResource RadiusM}"
-                                            Background="{StaticResource BgElevatedBrush}">
-                                        <StackPanel Spacing="6">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding UserDisplayName}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Rating, StringFormat='★ {0}/5'}"
-                                                           Foreground="{StaticResource AccentBrush}"
-                                                           FontSize="12" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Classes="muted"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <TextBlock Text="Ще немає відгуків — будьте першим!"
-                                   Classes="muted"
-                                   IsVisible="{Binding !HasReviews}"/>
-
-                        <Button Classes="text-link"
-                                Content="Показати всі"
-                                HorizontalAlignment="Left"
-                                Command="{Binding ToggleShowAllReviewsCommand}"
-                                IsVisible="{Binding HasMoreReviews}"/>
                     </StackPanel>
 
                     <!-- ===== More from artist ===== -->
@@ -310,22 +268,22 @@
                             <ItemsControl ItemsSource="{Binding MoreFromArtist}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="14"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="18"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="m:Album">
-                                        <Button Classes="ghost" Padding="6"
+                                        <Button Classes="ghost" Padding="8"
                                                 Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).GoToArtistAlbumCommand}"
                                                 CommandParameter="{Binding}">
-                                            <StackPanel Width="140" Spacing="8">
-                                                <Border Width="140" Height="140"
+                                            <StackPanel Width="176" Spacing="10">
+                                                <Border Width="176" Height="176"
                                                         CornerRadius="{StaticResource RadiusS}"
                                                         Background="{Binding ., Converter={StaticResource AlbumToGradient}}"
                                                         ClipToBounds="True">
                                                     <Grid>
                                                         <TextBlock Text="{Binding Title, Converter={StaticResource FirstChar}}"
-                                                                   FontSize="42" FontWeight="Bold" Opacity="0.45"
+                                                                   FontSize="52" FontWeight="Bold" Opacity="0.45"
                                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                    Foreground="{StaticResource FgPrimaryBrush}"
                                                                    IsVisible="{Binding CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
@@ -333,9 +291,9 @@
                                                                Stretch="UniformToFill"/>
                                                     </Grid>
                                                 </Border>
-                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding Year}" FontSize="11" Classes="muted"/>
+                                                <TextBlock Text="{Binding Year}" FontSize="14" Classes="muted"/>
                                             </StackPanel>
                                         </Button>
                                     </DataTemplate>

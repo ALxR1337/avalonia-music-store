@@ -8,21 +8,21 @@
         x:DataType="vm:LoginViewModel"
         Title="Вхід"
         Icon="avares://MusicApp/Assets/app-icon.png"
-        Width="420" Height="520"
+        Width="520" Height="640"
         Background="{StaticResource BgBaseBrush}"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         WindowDecorations="BorderOnly">
 
-    <Border Padding="40">
+    <Border Padding="50">
         <StackPanel Spacing="18" VerticalAlignment="Center">
 
             <StackPanel Spacing="6" HorizontalAlignment="Center">
                 <Border Background="{StaticResource AccentBrush}"
-                        CornerRadius="14" Width="56" Height="56"
+                        CornerRadius="18" Width="70" Height="70"
                         HorizontalAlignment="Center">
                     <TextBlock Text="♪" Foreground="Black"
-                               FontSize="28" FontWeight="Bold"
+                               FontSize="36" FontWeight="Bold"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Border>
@@ -46,7 +46,7 @@
 
                 <TextBlock Text="{Binding Error}"
                            Foreground="{StaticResource DangerBrush}"
-                           FontSize="12"
+                           FontSize="14"
                            IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
 

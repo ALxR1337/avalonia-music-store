@@ -23,28 +23,28 @@
     </Style>
 
     <Style Selector="TextBlock.h1">
-        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontSize" Value="36" />
         <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="LetterSpacing" Value="-0.5" />
+        <Setter Property="LetterSpacing" Value="-1.0" />
     </Style>
     <Style Selector="TextBlock.h2">
-        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontSize" Value="28" />
         <Setter Property="FontWeight" Value="Bold" />
     </Style>
     <Style Selector="TextBlock.h3">
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="TextBlock.body">
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="18" />
     </Style>
     <Style Selector="TextBlock.muted">
         <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="16" />
     </Style>
     <Style Selector="TextBlock.tiny">
         <Setter Property="Foreground" Value="{StaticResource FgTertiaryBrush}" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="LetterSpacing" Value="1" />
     </Style>
 
@@ -54,7 +54,7 @@
         <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
-        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Padding" Value="16,10" />
         <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
         <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
     </Style>
@@ -146,7 +146,7 @@
         <Setter Property="Foreground" Value="Black" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
-        <Setter Property="Padding" Value="22,10" />
+        <Setter Property="Padding" Value="28,14" />
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
@@ -157,9 +157,9 @@
 
     <!-- Round play button (Spotify-style accent circle) -->
     <Style Selector="Button.play-circle">
-        <Setter Property="Width" Value="48" />
-        <Setter Property="Height" Value="48" />
-        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Width" Value="60" />
+        <Setter Property="Height" Value="60" />
+        <Setter Property="CornerRadius" Value="30" />
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
         <Setter Property="Foreground" Value="Black" />
         <Setter Property="BorderThickness" Value="0" />
@@ -185,7 +185,7 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
-        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Padding" Value="18,14" />
     </Style>
     <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#0FFFFFFF" />
@@ -220,7 +220,7 @@
     <Style Selector="Border.chip">
         <Setter Property="Background" Value="{StaticResource BgChipBrush}" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
-        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Padding" Value="14,6" />
     </Style>
     <Style Selector="Border.chip.accent">
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
@@ -232,7 +232,7 @@
         <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
-        <Setter Property="Padding" Value="14,5" />
+        <Setter Property="Padding" Value="18,6" />
     </Style>
     <Style Selector="Button.chip-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#0FFFFFFF" />
@@ -253,7 +253,7 @@
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{StaticResource BgElevatedBrush}" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
-        <Setter Property="Padding" Value="14" />
+        <Setter Property="Padding" Value="18" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.15" />
@@ -294,13 +294,15 @@
     <!--                       Link / Icon family                      -->
     <!-- ============================================================ -->
 
-    <!-- Text link (album titles in cards): no rounded background, foreground lightens on hover -->
+    <!-- Text link (album titles in cards, clickable metadata): no rounded background,
+         hand cursor and accent-colored text on hover so users see it's interactive. -->
     <Style Selector="Button.text-link">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.text-link /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
@@ -309,7 +311,7 @@
     </Style>
     <Style Selector="Button.text-link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource AccentBrush}" />
     </Style>
 
     <!-- Inline link (e.g. "Показати всі", "Реєстрація"): tight, foreground lightens on hover -->
@@ -348,17 +350,17 @@
 
     <!-- Spotify-style circular pill (titlebar back/forward) -->
     <Style Selector="Button.icon-pill">
-        <Setter Property="Width" Value="32" />
-        <Setter Property="Height" Value="32" />
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
         <Setter Property="Background" Value="#FF000000" />
         <Setter Property="Foreground" Value="{StaticResource FgPrimaryBrush}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="CornerRadius" Value="20" />
         <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="Button.icon-pill /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#FF000000" />
-        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="CornerRadius" Value="20" />
     </Style>
     <Style Selector="Button.icon-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#FF2A2A2A" />
@@ -376,7 +378,7 @@
     </Style>
     <Style Selector="ListBoxItem">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="8" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusM}" />
     </Style>
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
@@ -450,8 +452,8 @@
         <Setter Property="StrokeLineCap" Value="Round" />
         <Setter Property="StrokeJoin" Value="Round" />
         <Setter Property="Fill" Value="Transparent" />
-        <Setter Property="Width" Value="20" />
-        <Setter Property="Height" Value="20" />
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
         <Setter Property="Stretch" Value="Uniform" />
     </Style>
     <Style Selector="Path.icon.filled">
@@ -482,16 +484,16 @@
     </Style>
     <!-- Sized variants -->
     <Style Selector="Path.icon.sm">
-        <Setter Property="Width" Value="16" />
-        <Setter Property="Height" Value="16" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
     </Style>
     <Style Selector="Path.icon.lg">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
     </Style>
     <Style Selector="Path.icon.xl">
-        <Setter Property="Width" Value="48" />
-        <Setter Property="Height" Value="48" />
+        <Setter Property="Width" Value="60" />
+        <Setter Property="Height" Value="60" />
     </Style>
 
     <!-- Horizontal-shelf scroll-nav chevrons (Spotify-style overlay, fade in on row hover) -->
@@ -499,8 +501,8 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Width" Value="48" />
-        <Setter Property="Height" Value="48" />
+        <Setter Property="Width" Value="60" />
+        <Setter Property="Height" Value="60" />
         <Setter Property="Opacity" Value="0" />
         <Setter Property="IsHitTestVisible" Value="False" />
         <Setter Property="Transitions">
@@ -512,12 +514,12 @@
     <Style Selector="Button.scroll-nav /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="CornerRadius" Value="30" />
     </Style>
     <Style Selector="Border.scroll-nav-circle">
-        <Setter Property="Width" Value="48" />
-        <Setter Property="Height" Value="48" />
-        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Width" Value="60" />
+        <Setter Property="Height" Value="60" />
+        <Setter Property="CornerRadius" Value="30" />
         <Setter Property="Background" Value="#FF000000" />
         <Setter Property="Transitions">
             <Transitions>

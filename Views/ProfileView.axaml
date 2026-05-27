@@ -11,16 +11,16 @@
         <!-- User header -->
         <Border Background="{StaticResource BgElevatedBrush}"
                 CornerRadius="{StaticResource RadiusL}"
-                Padding="24">
-            <Grid ColumnDefinitions="80,*,Auto">
-                <Border Grid.Column="0" Width="64" Height="64"
-                        CornerRadius="32" Background="{StaticResource AccentBrush}">
+                Padding="30">
+            <Grid ColumnDefinitions="100,*,Auto">
+                <Border Grid.Column="0" Width="80" Height="80"
+                        CornerRadius="40" Background="{StaticResource AccentBrush}">
                     <TextBlock Text="{Binding Username[0]}"
-                               FontSize="28" FontWeight="Bold" Foreground="Black"
+                               FontSize="36" FontWeight="Bold" Foreground="Black"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
-                <StackPanel Grid.Column="1" Margin="20,0" VerticalAlignment="Center" Spacing="4">
+                <StackPanel Grid.Column="1" Margin="26,0" VerticalAlignment="Center" Spacing="6">
                     <TextBlock Classes="tiny" Text="ПРОФІЛЬ"/>
                     <TextBlock Text="{Binding Username}" Classes="h2"/>
                     <TextBlock Classes="muted">
@@ -39,7 +39,7 @@
 
         <!-- Status banner -->
         <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusS}" Padding="12,8"
+                CornerRadius="{StaticResource RadiusS}" Padding="16,10"
                 IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <TextBlock Text="{Binding StatusMessage}" Classes="muted"/>
         </Border>
@@ -54,7 +54,7 @@
                         <TextBlock Classes="muted" Text="Статус:" VerticalAlignment="Center"/>
                         <ComboBox ItemsSource="{Binding StatusFilterOptions}"
                                   SelectedItem="{Binding OrderStatusFilter}"
-                                  MinWidth="160"
+                                  MinWidth="200"
                                   PlaceholderText="усі"/>
                         <Button Classes="ghost"
                                 Command="{Binding ClearOrderFilterCommand}"
@@ -68,14 +68,14 @@
                     </StackPanel>
 
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            CornerRadius="{StaticResource RadiusM}" Padding="18">
                         <ItemsControl ItemsSource="{Binding Orders}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="m:Order">
-                                    <Border Padding="6,10"
+                                    <Border Padding="8,14"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
-                                        <Grid ColumnDefinitions="70,140,170,*,Auto"
+                                        <Grid ColumnDefinitions="88,176,212,*,Auto"
                                               VerticalAlignment="Center">
                                             <TextBlock Grid.Column="0"
                                                        Text="{Binding Id, StringFormat='№{0}'}"
@@ -85,7 +85,7 @@
                                                        Classes="muted" VerticalAlignment="Center"/>
                                             <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left"
                                                     VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Status, Converter={StaticResource OrderStatusUa}}" FontSize="11"/>
+                                                <TextBlock Text="{Binding Status, Converter={StaticResource OrderStatusUa}}" FontSize="14"/>
                                             </Border>
                                             <TextBlock Grid.Column="3"
                                                        Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
@@ -103,24 +103,24 @@
                     </Border>
 
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14"
+                            CornerRadius="{StaticResource RadiusM}" Padding="18"
                             IsVisible="{Binding ExpandedOrder, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
+                        <StackPanel Spacing="10">
                             <TextBlock Classes="h3"
                                        Text="{Binding ExpandedOrder.Id, StringFormat='Деталі замовлення №{0}'}"/>
                             <ItemsControl ItemsSource="{Binding ExpandedOrder.Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="m:OrderItem">
-                                        <Grid ColumnDefinitions="*,80,Auto,Auto" Margin="0,3">
-                                            <StackPanel Grid.Column="0" Spacing="2">
+                                        <Grid ColumnDefinitions="*,100,Auto,Auto" Margin="0,4">
+                                            <StackPanel Grid.Column="0" Spacing="3">
                                                 <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
                                                 <TextBlock Text="{Binding Product.Album.Artist.Name}"
-                                                           Classes="muted" FontSize="11"/>
+                                                           Classes="muted" FontSize="14"/>
                                             </StackPanel>
                                             <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}" Classes="muted"/>
                                             <TextBlock Grid.Column="2"
                                                        Text="{Binding Quantity, StringFormat='× {0}'}"
-                                                       Classes="muted" Margin="10,0"/>
+                                                       Classes="muted" Margin="14,0"/>
                                             <TextBlock Grid.Column="3"
                                                        Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
                                                        Foreground="{StaticResource AccentBrush}"/>
@@ -139,23 +139,23 @@
 
                     <!-- Edit panel -->
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14"
+                            CornerRadius="{StaticResource RadiusM}" Padding="18"
                             IsVisible="{Binding EditingReview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
+                        <StackPanel Spacing="10">
                             <TextBlock Classes="h3"
                                        Text="{Binding EditingReview.Product.Album.Title, StringFormat='Редагувати: {0}'}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                 <TextBlock Classes="muted" Text="Оцінка:" VerticalAlignment="Center"/>
                                 <NumericUpDown Value="{Binding EditingReviewRating}"
                                                Minimum="1" Maximum="5" Increment="1"
-                                               Width="100"/>
+                                               Width="126"/>
                                 <Path Classes="icon accent filled" Data="{StaticResource IconStar}"
                                       VerticalAlignment="Center"/>
                             </StackPanel>
                             <TextBox Text="{Binding EditingReviewText}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
-                                     MinHeight="100"/>
+                                     MinHeight="126"/>
                             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                                 <Button Classes="link-inline" Content="Скасувати"
                                         Command="{Binding CancelEditReviewCommand}"/>
@@ -167,34 +167,34 @@
 
                     <!-- List -->
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            CornerRadius="{StaticResource RadiusM}" Padding="18">
                         <ItemsControl ItemsSource="{Binding MyReviews}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="m:Review">
-                                    <Border Padding="0,10"
+                                    <Border Padding="0,14"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="2">
+                                            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="3">
                                                 <TextBlock FontWeight="SemiBold"
                                                            Text="{Binding Product.Album.Title}"/>
-                                                <TextBlock Classes="muted" FontSize="12"
+                                                <TextBlock Classes="muted" FontSize="14"
                                                            Text="{Binding Product.Album.Artist.Name}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Grid.Row="0"
-                                                        Orientation="Horizontal" Spacing="6"
+                                                        Orientation="Horizontal" Spacing="8"
                                                         VerticalAlignment="Center">
                                                 <Path Classes="icon sm accent filled" Data="{StaticResource IconStar}"
                                                       VerticalAlignment="Center"/>
                                                 <TextBlock Foreground="{StaticResource AccentBrush}"
                                                            Text="{Binding Rating}"
                                                            VerticalAlignment="Center"/>
-                                                <Button Classes="icon" Width="32" Height="32"
+                                                <Button Classes="icon" Width="40" Height="40"
                                                         Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).StartEditReviewCommand}"
                                                         CommandParameter="{Binding}">
                                                     <Path Classes="icon" Data="{StaticResource IconEdit}"/>
                                                 </Button>
-                                                <Button Classes="icon" Width="32" Height="32"
+                                                <Button Classes="icon" Width="40" Height="40"
                                                         Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteReviewCommand}"
                                                         CommandParameter="{Binding}">
                                                     <Path Classes="icon" Data="{StaticResource IconTrash}"/>
@@ -202,7 +202,7 @@
                                             </StackPanel>
                                             <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
                                                        Text="{Binding Text}"
-                                                       TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                                       TextWrapping="Wrap" Margin="0,8,0,0"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -219,22 +219,22 @@
             <TabItem Header="Збережені запити">
                 <StackPanel Spacing="12" Margin="0,14,0,0">
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            CornerRadius="{StaticResource RadiusM}" Padding="18">
                         <ItemsControl ItemsSource="{Binding SavedSearches}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="svc:SavedSearchSummary">
-                                    <Border Padding="0,10"
+                                    <Border Padding="0,14"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
                                         <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
-                                            <StackPanel Grid.Column="0" Spacing="2">
+                                            <StackPanel Grid.Column="0" Spacing="3">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding Saved.Name}"/>
-                                                <TextBlock Classes="muted" FontSize="12"
+                                                <TextBlock Classes="muted" FontSize="14"
                                                            Text="{Binding Saved.QueryJson, StringFormat='запит: {0}'}"/>
                                             </StackPanel>
-                                            <Border Grid.Column="1" Classes="chip accent" Margin="6,0">
+                                            <Border Grid.Column="1" Classes="chip accent" Margin="8,0">
                                                 <TextBlock Text="{Binding CurrentCount, StringFormat='{}{0} результатів'}"
-                                                           FontSize="11" Foreground="Black"/>
+                                                           FontSize="14" Foreground="Black"/>
                                             </Border>
                                             <CheckBox Grid.Column="2"
                                                       Content="Сповіщати"
@@ -251,7 +251,7 @@
                                                     <TextBlock Text="Відкрити" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button Grid.Column="4" Classes="icon" Width="32" Height="32"
+                                            <Button Grid.Column="4" Classes="icon" Width="40" Height="40"
                                                     Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteSavedSearchCommand}"
                                                     CommandParameter="{Binding}">
                                                 <Path Classes="icon" Data="{StaticResource IconTrash}"/>
