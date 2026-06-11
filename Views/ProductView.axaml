@@ -8,8 +8,8 @@
     <StackPanel Margin="32,18,32,32" Spacing="20">
 
         <!-- Header / hero -->
-        <Grid ColumnDefinitions="350,*" RowDefinitions="*">
-            <Border Grid.Column="0" Width="300" Height="300"
+        <Grid ColumnDefinitions="280,*" RowDefinitions="*">
+            <Border Grid.Column="0" Width="240" Height="240"
                     CornerRadius="{StaticResource RadiusL}"
                     ClipToBounds="True">
                 <Border.Background>
@@ -20,7 +20,7 @@
                 </Border.Background>
                 <Grid>
                     <TextBlock Text="{Binding AlbumTitle, Converter={StaticResource FirstChar}}"
-                               FontSize="108" FontWeight="Bold" Opacity="0.45"
+                               FontSize="86" FontWeight="Bold" Opacity="0.45"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{StaticResource FgPrimaryBrush}"
@@ -72,7 +72,7 @@
 
                 <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,12,0,0">
                     <TextBlock Text="{Binding PriceLabel}"
-                               FontSize="28" FontWeight="Bold"
+                               FontSize="22" FontWeight="Bold"
                                Foreground="{StaticResource AccentBrush}"/>
                     <TextBlock Text="{Binding StockLabel}" Classes="muted"
                                VerticalAlignment="Center"/>
@@ -86,7 +86,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Path Data="{StaticResource IconCart}" Fill="Transparent" Stroke="Black"
                                   StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
-                                  Width="22" Height="22" Stretch="Uniform" VerticalAlignment="Center"/>
+                                  Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                             <TextBlock Text="Додати в кошик" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
@@ -105,24 +105,24 @@
 
         <!-- About album -->
         <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusM}" Padding="22"
+                CornerRadius="{StaticResource RadiusM}" Padding="18"
                 IsVisible="{Binding HasAlbumDescription}">
             <StackPanel Spacing="6">
                 <TextBlock Classes="tiny" Text="ПРО АЛЬБОМ"/>
                 <TextBlock Text="{Binding AlbumDescription}"
-                           TextWrapping="Wrap" LineHeight="28"/>
+                           TextWrapping="Wrap" LineHeight="22"/>
             </StackPanel>
         </Border>
 
         <!-- About artist -->
         <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusM}" Padding="22"
+                CornerRadius="{StaticResource RadiusM}" Padding="18"
                 IsVisible="{Binding HasArtistBio}">
             <StackPanel Spacing="6">
                 <TextBlock Classes="tiny" Text="ПРО ВИКОНАВЦЯ"/>
                 <TextBlock Text="{Binding ArtistName}" Classes="h3"/>
                 <TextBlock Text="{Binding ArtistBio}"
-                           TextWrapping="Wrap" LineHeight="28"/>
+                           TextWrapping="Wrap" LineHeight="22"/>
             </StackPanel>
         </Border>
 
@@ -135,20 +135,20 @@
                 <ItemsControl ItemsSource="{Binding Tracks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="m:Track">
-                            <Border Padding="14,10" CornerRadius="{StaticResource RadiusS}">
-                                <Grid ColumnDefinitions="38,50,*,Auto">
+                            <Border Padding="10,8" CornerRadius="{StaticResource RadiusS}">
+                                <Grid ColumnDefinitions="30,40,*,Auto">
                                     <TextBlock Grid.Column="0"
                                                Text="{Binding Position}"
                                                Classes="muted"
                                                VerticalAlignment="Center"/>
-                                    <Button Grid.Column="1" Classes="icon" Width="36" Height="36"
+                                    <Button Grid.Column="1" Classes="icon" Width="28" Height="28"
                                             Command="{Binding $parent[ItemsControl].((vm:ProductViewModel)DataContext).PlaySampleCommand}"
                                             CommandParameter="{Binding}">
                                         <Path Classes="icon sm filled primary"
                                               Data="{StaticResource IconPlay}"/>
                                     </Button>
                                     <TextBlock Grid.Column="2" Text="{Binding Title}"
-                                               VerticalAlignment="Center" Margin="10,0"/>
+                                               VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="3" Classes="muted"
                                                Text="{Binding DurationDisplay}"
                                                VerticalAlignment="Center"/>
@@ -177,7 +177,7 @@
                     <DataTemplate DataType="m:Review">
                         <Border Background="{StaticResource BgElevatedBrush}"
                                 CornerRadius="{StaticResource RadiusM}"
-                                Padding="18" Margin="0,0,0,14">
+                                Padding="14" Margin="0,0,0,10">
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
@@ -205,22 +205,22 @@
             <!-- Leave-review form (auth + purchase gated) -->
             <Border Background="{StaticResource BgElevatedBrush}"
                     CornerRadius="{StaticResource RadiusM}"
-                    Padding="18"
+                    Padding="14"
                     IsVisible="{Binding CanLeaveReview}">
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="8">
                     <TextBlock Text="Залишити відгук" Classes="h3"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="Оцінка:" Classes="muted" VerticalAlignment="Center"/>
                         <NumericUpDown Value="{Binding NewReviewRating}"
                                        Minimum="1" Maximum="5" Increment="1"
-                                       Width="100" ShowButtonSpinner="True"/>
+                                       Width="80" ShowButtonSpinner="True"/>
                         <Path Classes="icon accent filled" Data="{StaticResource IconStar}"
                               VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBox Text="{Binding NewReviewText}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
-                             MinHeight="100"
+                             MinHeight="80"
                              PlaceholderText="Ваші враження від альбому..."/>
                     <Button Classes="primary" Content="Надіслати"
                             HorizontalAlignment="Left"

@@ -400,6 +400,9 @@ public class CatalogService : ICatalogService
         if (order is null) return;
         order.Status = status;
         db.SaveChanges();
+        // Completing / un-completing an order changes Product.SalesCount via DB triggers —
+        // refresh the cache so "Популярне" and the admin Top-10 reflect it immediately.
+        LoadReferenceData();
     }
 
     public IReadOnlyList<User> GetUsers()

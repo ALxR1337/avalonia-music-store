@@ -11,8 +11,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Музичний магазин"
         Icon="avares://MusicApp/Assets/app-icon.png"
-        Width="1600" Height="1000"
-        MinWidth="1280" MinHeight="800"
+        Width="1280" Height="800"
+        MinWidth="1024" MinHeight="640"
         Background="{StaticResource BgBaseBrush}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="-1"
@@ -23,7 +23,7 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="60,*,Auto" ColumnDefinitions="Auto,*"
+    <Grid RowDefinitions="48,*,Auto" ColumnDefinitions="Auto,*"
           SizeChanged="OnRootSizeChanged">
 
         <!-- ============ TITLE BAR ============ -->
@@ -49,7 +49,7 @@
 
                 <!-- Centered search + autocomplete popup -->
                 <Border Grid.Column="1" Classes="search-pill"
-                        Padding="18,0" MaxWidth="650" Height="50"
+                        Padding="14,0" MaxWidth="520" Height="40"
                         HorizontalAlignment="Stretch" Margin="20,0">
                     <Grid ColumnDefinitions="Auto,*">
                         <Path Grid.Column="0" Classes="icon sm primary"
@@ -71,23 +71,23 @@
                             <!-- Width = pill width minus 40 (its pill-end diameter at the bottom)
                                  so the popup's flat top sits inside the pill's straight bottom
                                  section and doesn't poke past the rounded ends. -->
-                            <Border Width="{Binding $parent[Popup].PlacementTarget.Bounds.Width, Converter={StaticResource DoubleOffset}, ConverterParameter=-50}"
+                            <Border Width="{Binding $parent[Popup].PlacementTarget.Bounds.Width, Converter={StaticResource DoubleOffset}, ConverterParameter=-40}"
                                     Classes="search-popup"
-                                    Padding="8">
+                                    Padding="6">
                                 <ItemsControl ItemsSource="{Binding Suggestions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Button Classes="ghost"
                                                     HorizontalContentAlignment="Stretch"
                                                     HorizontalAlignment="Stretch"
-                                                    Padding="14,8"
+                                                    Padding="10,6"
                                                     Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).PickSuggestionCommand}"
                                                     CommandParameter="{Binding}">
                                                 <Grid ColumnDefinitions="Auto,*">
-                                                    <Border Grid.Column="0" Width="40" Height="40"
-                                                            Margin="0,0,12,0"
+                                                    <Border Grid.Column="0" Width="32" Height="32"
+                                                            Margin="0,0,10,0"
                                                             Background="{StaticResource BgChipBrush}"
-                                                            CornerRadius="20"
+                                                            CornerRadius="16"
                                                             ClipToBounds="True">
                                                         <Grid>
                                                             <Path Classes="icon sm primary"
@@ -102,7 +102,7 @@
                                                     <StackPanel Grid.Column="1" Spacing="2">
                                                         <TextBlock Text="{Binding Text}" FontWeight="SemiBold"
                                                                    TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="14"/>
+                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
@@ -122,13 +122,14 @@
                             Command="{Binding OpenLoginCommand}"
                             IsVisible="{Binding IsGuest}"
                             VerticalAlignment="Center"
-                            Margin="0,0,8,0" Padding="18,6"/>
+                            Margin="0,0,8,0" Padding="14,4"/>
 
-                    <Border Background="{StaticResource BgElevatedHoverBrush}"
-                            CornerRadius="{StaticResource RadiusPill}"
-                            Padding="6,6,16,6" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Border Width="28" Height="28" CornerRadius="14"
+                    <Button x:Name="UserMenuButton" Classes="user-chip"
+                            Padding="4,4,10,4" Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Command="{Binding ToggleUserMenuCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="22" Height="22" CornerRadius="11"
                                     Background="{StaticResource BgChipBrush}">
                                 <Grid>
                                     <Path Data="{StaticResource IconUser}"
@@ -136,11 +137,11 @@
                                           Stroke="{StaticResource FgPrimaryBrush}"
                                           StrokeThickness="1.5"
                                           StrokeLineCap="Round" StrokeJoin="Round"
-                                          Width="18" Height="18" Stretch="Uniform"
+                                          Width="14" Height="14" Stretch="Uniform"
                                           HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsVisible="{Binding IsGuest}"/>
                                     <TextBlock Text="{Binding UserDisplayName, Converter={StaticResource FirstChar}}"
-                                               FontSize="16" FontWeight="Bold"
+                                               FontSize="12" FontWeight="Bold"
                                                Foreground="{StaticResource FgPrimaryBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                IsVisible="{Binding !IsGuest}"/>
@@ -148,9 +149,89 @@
                             </Border>
                             <TextBlock Text="{Binding UserDisplayName}"
                                        Foreground="{StaticResource FgSecondaryBrush}"
-                                       VerticalAlignment="Center" FontSize="16"/>
+                                       VerticalAlignment="Center" FontSize="13"/>
+                            <Path Classes="icon sm" Data="{StaticResource IconChevronDown}"
+                                  VerticalAlignment="Center"/>
                         </StackPanel>
-                    </Border>
+                    </Button>
+
+                    <!-- Account menu — inline Popup (its content inherits the window
+                         DataContext, so the row Commands resolve against the VM, which
+                         a Button.Flyout does not reliably do). -->
+                    <Popup PlacementTarget="{Binding #UserMenuButton}"
+                           Placement="BottomEdgeAlignedRight"
+                           HorizontalOffset="0" VerticalOffset="6"
+                           IsOpen="{Binding IsUserMenuOpen, Mode=TwoWay}"
+                           IsLightDismissEnabled="True"
+                           WindowManagerAddShadowHint="False">
+                        <Border Classes="app-menu" Padding="6">
+                            <StackPanel MinWidth="232" Spacing="2">
+
+                                <!-- Header (signed-in only) -->
+                                <StackPanel Margin="10,8" Spacing="1"
+                                            IsVisible="{Binding !IsGuest}">
+                                    <TextBlock Text="{Binding UserDisplayName}"
+                                               FontWeight="Bold" FontSize="14"
+                                               Foreground="{StaticResource FgPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding UserEmail}"
+                                               Classes="muted" FontSize="12"
+                                               IsVisible="{Binding UserEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Text="{Binding UserRoleLabel}"
+                                               Classes="muted" FontSize="11"/>
+                                </StackPanel>
+                                <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}"
+                                           Margin="6,2" IsVisible="{Binding !IsGuest}"/>
+
+                                <!-- Signed-in actions -->
+                                <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
+                                        Command="{Binding NavigateCommand}" CommandParameter="Profile">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconUser}"/>
+                                        <TextBlock Text="Профіль" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
+                                        Command="{Binding NavigateCommand}" CommandParameter="Orders">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconBox}"/>
+                                        <TextBlock Text="Мої замовлення" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
+                                        Command="{Binding ChangePasswordCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconKey}"/>
+                                        <TextBlock Text="Змінити пароль" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Rectangle Height="1" Fill="{StaticResource DividerSoftBrush}"
+                                           Margin="6,2" IsVisible="{Binding !IsGuest}"/>
+                                <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
+                                        Command="{Binding LogoutCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconLogout}"/>
+                                        <TextBlock Text="Вийти" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Guest actions -->
+                                <Button Classes="menu-row" IsVisible="{Binding IsGuest}"
+                                        Command="{Binding OpenLoginCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconLogin}"/>
+                                        <TextBlock Text="Увійти" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="menu-row" IsVisible="{Binding IsGuest}"
+                                        Command="{Binding OpenRegisterCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon sm" Data="{StaticResource IconEdit}"/>
+                                        <TextBlock Text="Реєстрація" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
 
                     <Button Classes="icon" Width="36" Height="32"
                             Click="OnMinimize">
@@ -177,8 +258,8 @@
         <!-- ============ SIDEBAR ============ -->
         <Border Grid.Row="1" Grid.Column="0"
                 Background="{StaticResource BgSidebarBrush}"
-                Padding="16,20"
-                Width="{Binding IsSidebarCollapsed, Converter={x:Static conv:BoolToWidthConverter.Instance}, ConverterParameter=90|300}">
+                Padding="12,16"
+                Width="{Binding IsSidebarCollapsed, Converter={x:Static conv:BoolToWidthConverter.Instance}, ConverterParameter=72|240}">
             <StackPanel Spacing="4">
                 <TextBlock Classes="tiny" Text="МАГАЗИН" Margin="14,0,0,8"
                            IsVisible="{Binding !IsSidebarCollapsed}"/>
@@ -189,6 +270,13 @@
                         <TextBlock Text="Каталог" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
                     </StackPanel>
                 </Button>
+                <Button Classes="nav-item" Classes.active="{Binding IsSearchActive}"
+                        Command="{Binding NavigateCommand}" CommandParameter="SearchResults">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <Path Classes="icon" Data="{StaticResource IconSearch}"/>
+                        <TextBlock Text="Пошук" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
+                    </StackPanel>
+                </Button>
                 <Button Classes="nav-item" Classes.active="{Binding IsCartActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Cart">
                     <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
@@ -196,11 +284,11 @@
                               VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <TextBlock Grid.Column="1" Text="Кошик" VerticalAlignment="Center"
                                    IsVisible="{Binding !IsSidebarCollapsed}"/>
-                        <Border Grid.Column="2" Classes="chip accent" Padding="8,2"
+                        <Border Grid.Column="2" Classes="chip accent" Padding="6,1"
                                 IsVisible="{Binding HasCartItems}"
                                 VerticalAlignment="Center" Margin="6,0,0,0">
-                            <TextBlock Text="{Binding CartCount}" FontSize="12"
-                                       Foreground="Black" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding CartCount}" FontSize="10"
+                                       Foreground="{StaticResource OnAccentBrush}" FontWeight="Bold"/>
                         </Border>
                     </Grid>
                 </Button>
@@ -254,7 +342,7 @@
 
         <!-- ============ CONTENT ============ -->
         <Border Grid.Row="1" Grid.Column="1" Background="{StaticResource BgBaseBrush}">
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer x:Name="ContentScroll" HorizontalScrollBarVisibility="Disabled">
                 <ContentControl Content="{Binding CurrentView}"/>
             </ScrollViewer>
         </Border>
@@ -264,13 +352,13 @@
                 Background="{StaticResource BgPlayerBrush}"
                 BorderBrush="{StaticResource DividerBrush}"
                 BorderThickness="0,1,0,0"
-                Height="90"
+                Height="80"
                 IsVisible="{Binding IsMiniPlayerVisible}"
                 RenderTransformOrigin="0.5,0.5">
             <Border.Styles>
                 <Style Selector="Border">
                     <Setter Property="Opacity" Value="0"/>
-                    <Setter Property="RenderTransform" Value="translateY(90px)"/>
+                    <Setter Property="RenderTransform" Value="translateY(80px)"/>
                 </Style>
                 <Style Selector="Border[IsVisible=true]">
                     <Setter Property="Opacity" Value="1"/>
@@ -299,7 +387,7 @@
                 PointerPressed="OnCoverBackdropPressed">
             <Grid RowDefinitions="*,8*,*" ColumnDefinitions="*,8*,*">
                 <Viewbox Grid.Row="1" Grid.Column="1" Stretch="Uniform">
-                    <Border Width="750" Height="750"
+                    <Border Width="600" Height="600"
                             CornerRadius="{StaticResource RadiusL}"
                             ClipToBounds="True"
                             PointerPressed="OnCoverImagePressed"
@@ -307,7 +395,7 @@
                             BoxShadow="0 24 64 0 #99000000">
                         <Grid>
                             <TextBlock Text="{Binding FullscreenCoverAlbum.Title, Converter={StaticResource FirstChar}}"
-                                       FontSize="275" FontWeight="Bold" Opacity="0.45"
+                                       FontSize="220" FontWeight="Bold" Opacity="0.45"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{StaticResource FgPrimaryBrush}"
                                        IsVisible="{Binding FullscreenCoverAlbum.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
@@ -317,6 +405,22 @@
                     </Border>
                 </Viewbox>
             </Grid>
+        </Border>
+
+        <!-- ============ LOGIN OVERLAY ============
+             Spotify-style modal: a dimmed backdrop over the whole window with a
+             centered login card. Backdrop click / Esc dismiss it (handled in
+             code-behind); the card itself swallows presses. Sits above the cover
+             overlay so login always wins focus. -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="2"
+                Background="#CC000000"
+                IsVisible="{Binding IsLoginVisible}"
+                ZIndex="1100"
+                PointerPressed="OnLoginBackdropPressed">
+            <views:LoginView x:Name="LoginCard"
+                             DataContext="{Binding Login}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             PointerPressed="OnLoginCardPressed"/>
         </Border>
     </Grid>
 </Window>

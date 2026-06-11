@@ -2,9 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MusicApp.Models;
@@ -35,6 +32,12 @@ public partial class ProfileViewModel : ViewModelBase
     // Status messages (e.g., password change result)
     [ObservableProperty] private string? _statusMessage;
 
+    // Inline "change password" panel (replaces the old modal window).
+    [ObservableProperty] private bool _isPasswordPanelOpen;
+
+    /// <summary>Form for the inline change-password panel.</summary>
+    public ChangePasswordViewModel PasswordForm { get; }
+
     public ProfileViewModel(IAuthService auth, ICatalogService catalog,
         ISearchService? search = null, INavigationService? nav = null)
     {
@@ -42,6 +45,13 @@ public partial class ProfileViewModel : ViewModelBase
         _catalog = catalog;
         _search = search;
         _nav = nav;
+
+        PasswordForm = new ChangePasswordViewModel(auth);
+        PasswordForm.RequestClose += ok =>
+        {
+            IsPasswordPanelOpen = false;
+            if (ok) StatusMessage = "Пароль змінено.";
+        };
 
         Username = auth.CurrentUser?.Username ?? "Гість";
         Email = string.IsNullOrEmpty(auth.CurrentUser?.Email) ? "не вказано" : auth.CurrentUser.Email!;
@@ -196,30 +206,21 @@ public partial class ProfileViewModel : ViewModelBase
         ReloadSavedSearches();
     }
 
-    // === Password change ===
+    // === Password change (inline panel) ===
 
+    // Reveals the inline change-password panel under the profile header. Called
+    // from the profile button and (via the shell) from the title-bar menu.
     [RelayCommand]
-    private async Task ChangePasswordAsync()
+    public void OpenPasswordPanel()
     {
         if (!IsAuthenticated)
         {
             StatusMessage = "Гість не може змінити пароль.";
             return;
         }
-        var owner = OwnerWindow();
-        if (owner is null) return;
-
-        var vm = new ChangePasswordViewModel(_auth);
-        var window = new Views.ChangePasswordWindow { DataContext = vm };
-        var ok = await window.ShowDialog<bool?>(owner);
-        if (ok == true) StatusMessage = "Пароль змінено.";
-    }
-
-    private static Window? OwnerWindow()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            return desktop.MainWindow;
-        return null;
+        PasswordForm.Reset();
+        StatusMessage = null;
+        IsPasswordPanelOpen = true;
     }
 }
 
@@ -235,6 +236,15 @@ public partial class ChangePasswordViewModel : ViewModelBase
     public ChangePasswordViewModel(IAuthService auth) { _auth = auth; }
 
     public event Action<bool>? RequestClose;
+
+    // Clears the fields before the panel is shown again.
+    public void Reset()
+    {
+        OldPassword = string.Empty;
+        NewPassword = string.Empty;
+        ConfirmPassword = string.Empty;
+        Error = null;
+    }
 
     [RelayCommand]
     private void Cancel() => RequestClose?.Invoke(false);

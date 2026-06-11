@@ -211,7 +211,7 @@ public class WaveCoverageTests
         h.RunStep("wave8-04-cart-guest", () => h.Nav!.NavigateTo(NavTarget.Cart));
         if (h.Nav!.CurrentView is CartViewModel cvm)
         {
-            h.RunStep("wave8-05-checkout-blocked", () => cvm.CheckoutCommand.Execute(null));
+            h.RunStep("wave8-05-checkout-blocked", () => cvm.BeginCheckoutCommand.Execute(null));
         }
     }
 

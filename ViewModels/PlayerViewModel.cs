@@ -12,8 +12,6 @@ namespace MusicApp.ViewModels;
 
 public partial class PlayerViewModel : ViewModelBase
 {
-    private const int InitialReviewLimit = 3;
-
     private readonly IPlayerService _player;
     private readonly ICatalogService _catalog;
     private readonly IAuthService _auth;
@@ -31,21 +29,13 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _albumDescription = "";
     [ObservableProperty] private bool _hasDescription;
     [ObservableProperty] private bool _isDescriptionExpanded;
-    [ObservableProperty] private Album? _currentAlbumForCover;
+    [ObservableProperty] private Album? _selectedAlbum;
 
-    [ObservableProperty] private bool _isAlbumLiked;
+    private int? _albumProductId;
+
     [ObservableProperty] private bool _isShuffleOn;
     [ObservableProperty] private RepeatMode _repeatMode;
 
-    [ObservableProperty] private double _avgRating;
-    [ObservableProperty] private int _reviewCount;
-    [ObservableProperty] private bool _showAllReviews;
-    [ObservableProperty] private bool _hasMoreReviews;
-    [ObservableProperty] private bool _canLeaveReview;
-    [ObservableProperty] private bool _isReviewFormOpen;
-    [ObservableProperty] private string _newReviewText = string.Empty;
-    [ObservableProperty] private int _newReviewRating = 5;
-    [ObservableProperty] private string? _reviewMessage;
 
     public PlayerViewModel(
         IPlayerService player,
@@ -53,7 +43,8 @@ public partial class PlayerViewModel : ViewModelBase
         IAuthService auth,
         ILikesService likes,
         INavigationService nav,
-        IFileDialogService? files = null)
+        IFileDialogService? files = null,
+        Album? initialAlbum = null)
     {
         _player = player;
         _catalog = catalog;
@@ -65,9 +56,7 @@ public partial class PlayerViewModel : ViewModelBase
         PurchasedAlbums = new ObservableCollection<Album>();
         PurchasedAlbums.CollectionChanged += OnPurchasedAlbumsChanged;
         Tracks = new ObservableCollection<TrackRowViewModel>();
-        Reviews = new ObservableCollection<Review>();
         MoreFromArtist = new ObservableCollection<Album>();
-        AllReviews = new System.Collections.Generic.List<Review>();
 
         ReloadPurchasedAlbums();
         _auth.CurrentUserChanged += (_, _) => { ReloadPurchasedAlbums(); Refresh(); };
@@ -80,44 +69,37 @@ public partial class PlayerViewModel : ViewModelBase
         IsShuffleOn = _player.ShuffleMode;
         RepeatMode = _player.RepeatMode;
 
+        // Skip the change notification — Refresh() below sees the field directly,
+        // so we don't double-fire navigation/refresh wiring.
+        _selectedAlbum = initialAlbum;
         Refresh();
     }
 
     public ObservableCollection<Album> PurchasedAlbums { get; }
     public ObservableCollection<TrackRowViewModel> Tracks { get; }
-    public ObservableCollection<Review> Reviews { get; }
     public ObservableCollection<Album> MoreFromArtist { get; }
 
-    private System.Collections.Generic.List<Review> AllReviews { get; }
-
     public bool HasTrack => _player.CurrentTrack is not null;
-    public bool HasAlbum => _player.CurrentAlbum is not null;
+    public bool HasSelectedAlbum => SelectedAlbum is not null;
     public bool HasPurchasedAlbums => PurchasedAlbums.Count > 0;
-    public bool HasArtist => _player.CurrentAlbum?.Artist is not null;
+    public bool HasArtist => SelectedAlbum?.Artist is not null;
     public bool HasMoreFromArtist => MoreFromArtist.Count > 0;
-    public bool HasReviews => Reviews.Count > 0;
-    public string RatingLabel => ReviewCount == 0 ? "Немає відгуків" : $"★ {AvgRating:0.0} ({ReviewCount})";
 
-    // Header title: prefer album title when an album is playing; for local files
-    // (no album context) we fall back to the track title.
-    public string HeaderTitle => HasAlbum ? AlbumTitle : TrackTitle;
+    public string HeaderTitle => HasSelectedAlbum ? AlbumTitle : TrackTitle;
 
-    // Single-line "2018 · Hip-Hop · 15 треків · 24 хв" — only renders the parts present.
-    public string MetadataLine
-    {
-        get
-        {
-            if (!HasAlbum) return "";
-            var parts = new System.Collections.Generic.List<string>();
-            if (!string.IsNullOrEmpty(AlbumYear)) parts.Add(AlbumYear);
-            if (!string.IsNullOrEmpty(AlbumGenre)) parts.Add(AlbumGenre);
-            if (!string.IsNullOrEmpty(AlbumTrackCount)) parts.Add(AlbumTrackCount);
-            if (!string.IsNullOrEmpty(AlbumTotalDuration)) parts.Add(AlbumTotalDuration);
-            return string.Join("  ·  ", parts);
-        }
-    }
+    public bool HasYear => !string.IsNullOrEmpty(AlbumYear);
+    public bool HasGenre => !string.IsNullOrEmpty(AlbumGenre);
+    public bool HasTrackCount => !string.IsNullOrEmpty(AlbumTrackCount);
+    public bool HasTotalDuration => !string.IsNullOrEmpty(AlbumTotalDuration);
 
-    public string NowPlayingLabel => HasTrack ? $"Зараз грає: {TrackTitle}" : "";
+    // Each separator is visible only when this part renders AND at least one part
+    // after it renders too — keeps the row tidy when fields are missing.
+    public bool ShowYearSeparator => HasYear && (HasGenre || HasTrackCount || HasTotalDuration);
+    public bool ShowGenreSeparator => HasGenre && (HasTrackCount || HasTotalDuration);
+    public bool ShowTrackCountSeparator => HasTrackCount && HasTotalDuration;
+
+    public bool HasAlbumProduct => _albumProductId is > 0;
+
     public string MoreFromArtistTitle => string.IsNullOrEmpty(ArtistName) ? "Більше від артиста" : $"Більше від {ArtistName}";
 
     private void OnPurchasedAlbumsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -134,7 +116,7 @@ public partial class PlayerViewModel : ViewModelBase
     private void Refresh()
     {
         var t = _player.CurrentTrack;
-        var album = _player.CurrentAlbum;
+        var album = SelectedAlbum;
         TrackTitle = t?.Title ?? "—";
         AlbumTitle = album?.Title ?? "";
         ArtistName = album?.Artist?.Name ?? "";
@@ -147,28 +129,35 @@ public partial class PlayerViewModel : ViewModelBase
         AlbumDescription = album?.Description ?? "";
         HasDescription = !string.IsNullOrWhiteSpace(AlbumDescription);
         IsDescriptionExpanded = false;
-        CurrentAlbumForCover = album;
+        _albumProductId = album is null ? null : _catalog.GetPrimaryProductId(album.Id);
 
         OnPropertyChanged(nameof(HasTrack));
-        OnPropertyChanged(nameof(HasAlbum));
+        OnPropertyChanged(nameof(HasSelectedAlbum));
         OnPropertyChanged(nameof(HasArtist));
         OnPropertyChanged(nameof(HeaderTitle));
-        OnPropertyChanged(nameof(MetadataLine));
-        OnPropertyChanged(nameof(NowPlayingLabel));
+        OnPropertyChanged(nameof(HasYear));
+        OnPropertyChanged(nameof(HasGenre));
+        OnPropertyChanged(nameof(HasTrackCount));
+        OnPropertyChanged(nameof(HasTotalDuration));
+        OnPropertyChanged(nameof(ShowYearSeparator));
+        OnPropertyChanged(nameof(ShowGenreSeparator));
+        OnPropertyChanged(nameof(ShowTrackCountSeparator));
+        OnPropertyChanged(nameof(HasAlbumProduct));
         OnPropertyChanged(nameof(MoreFromArtistTitle));
 
         RebuildTracks(album);
-        ReloadReviews(album);
         ReloadMoreFromArtist(album);
         RefreshLikeStates();
-        ReloadCanLeaveReview(album);
     }
+
+    partial void OnSelectedAlbumChanged(Album? value) => Refresh();
 
     private void RebuildTracks(Album? album)
     {
         Tracks.Clear();
         if (album is null) return;
-        var currentTrackId = _player.CurrentTrack?.Id ?? 0;
+        var playingAlbumId = _player.CurrentAlbum?.Id ?? 0;
+        var currentTrackId = playingAlbumId == album.Id ? _player.CurrentTrack?.Id ?? 0 : 0;
         for (int i = 0; i < album.Tracks.Count; i++)
         {
             var row = new TrackRowViewModel(album.Tracks[i], i)
@@ -177,39 +166,6 @@ public partial class PlayerViewModel : ViewModelBase
             };
             Tracks.Add(row);
         }
-    }
-
-    private void ReloadReviews(Album? album)
-    {
-        AllReviews.Clear();
-        Reviews.Clear();
-        AvgRating = 0;
-        ReviewCount = 0;
-        if (album is null) { RaiseReviewStateChanges(); return; }
-        var (avg, count) = _catalog.GetAlbumRating(album.Id);
-        AvgRating = avg;
-        ReviewCount = count;
-        AllReviews.AddRange(_catalog.GetReviewsForAlbum(album.Id));
-        RenderReviews();
-        RaiseReviewStateChanges();
-    }
-
-    private void RenderReviews()
-    {
-        Reviews.Clear();
-        var slice = ShowAllReviews ? AllReviews : AllReviews.Take(InitialReviewLimit);
-        foreach (var r in slice) Reviews.Add(r);
-        HasMoreReviews = !ShowAllReviews && AllReviews.Count > InitialReviewLimit;
-        OnPropertyChanged(nameof(HasReviews));
-    }
-
-    partial void OnShowAllReviewsChanged(bool value) => RenderReviews();
-    partial void OnAvgRatingChanged(double value) => OnPropertyChanged(nameof(RatingLabel));
-    partial void OnReviewCountChanged(int value) => OnPropertyChanged(nameof(RatingLabel));
-
-    private void RaiseReviewStateChanges()
-    {
-        OnPropertyChanged(nameof(HasReviews));
     }
 
     private void ReloadMoreFromArtist(Album? album)
@@ -229,16 +185,6 @@ public partial class PlayerViewModel : ViewModelBase
             : new System.Collections.Generic.HashSet<int>();
         foreach (var row in Tracks)
             row.IsLiked = likedTracks.Contains(row.Track.Id);
-        var album = _player.CurrentAlbum;
-        IsAlbumLiked = userId > 0 && album is not null && _likes.IsAlbumLiked(userId, album.Id);
-    }
-
-    private void ReloadCanLeaveReview(Album? album)
-    {
-        var user = _auth.CurrentUser;
-        CanLeaveReview = album is not null
-            && user is { Role: not UserRole.Guest, Id: > 0 }
-            && _catalog.IsAlbumPurchased(album.Id, user.Id);
     }
 
     private static string FormatTotal(TimeSpan ts)
@@ -248,24 +194,28 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void PlayAlbum(Album album) => _player.PlayAlbum(album);
+    private void OpenAlbum(Album album)
+    {
+        if (album is null) return;
+        // Push a new navigation entry so the top-bar back/forward arrows can
+        // step between the library grid and the open album just like browser
+        // history. The Player factory passes `album` through as initialAlbum.
+        _nav.NavigateTo(NavTarget.Player, album);
+    }
+
+    [RelayCommand]
+    private void PlaySelectedAlbum()
+    {
+        if (SelectedAlbum is null) return;
+        _player.PlayAlbum(SelectedAlbum);
+    }
 
     [RelayCommand]
     private void PlayTrack(TrackRowViewModel row)
     {
-        var album = _player.CurrentAlbum;
+        var album = SelectedAlbum;
         if (album is null || row is null) return;
         _player.PlayAlbum(album, row.Index);
-    }
-
-    [RelayCommand]
-    private void ToggleAlbumLike()
-    {
-        var userId = _auth.CurrentUser?.Id ?? 0;
-        var album = _player.CurrentAlbum;
-        if (userId <= 0 || album is null) return;
-        if (IsAlbumLiked) _likes.UnlikeAlbum(userId, album.Id);
-        else _likes.LikeAlbum(userId, album.Id);
     }
 
     [RelayCommand]
@@ -294,9 +244,24 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void GoToArtist()
     {
-        var name = _player.CurrentAlbum?.Artist?.Name;
+        var name = SelectedAlbum?.Artist?.Name;
         if (string.IsNullOrWhiteSpace(name)) return;
         _nav.NavigateTo(NavTarget.SearchResults, $"виконавець:\"{name}\"");
+    }
+
+    [RelayCommand]
+    private void GoToAlbumProduct()
+    {
+        if (_albumProductId is int pid && pid > 0)
+            _nav.NavigateTo(NavTarget.Product, pid);
+    }
+
+    [RelayCommand]
+    private void GoToGenre()
+    {
+        var name = SelectedAlbum?.Genre?.Name;
+        if (string.IsNullOrWhiteSpace(name)) return;
+        _nav.NavigateTo(NavTarget.SearchResults, $"жанр:\"{name}\"");
     }
 
     [RelayCommand]
@@ -308,32 +273,6 @@ public partial class PlayerViewModel : ViewModelBase
 
     [RelayCommand]
     private void ToggleDescription() => IsDescriptionExpanded = !IsDescriptionExpanded;
-
-    [RelayCommand]
-    private void ToggleReviewForm() => IsReviewFormOpen = !IsReviewFormOpen;
-
-    [RelayCommand]
-    private void ToggleShowAllReviews() => ShowAllReviews = !ShowAllReviews;
-
-    [RelayCommand]
-    private void SubmitReview()
-    {
-        var album = _player.CurrentAlbum;
-        if (album is null) { ReviewMessage = "Немає альбому."; return; }
-        var user = _auth.CurrentUser;
-        if (user is null || user.Role == UserRole.Guest) { ReviewMessage = "Лише авторизовані."; return; }
-        if (!CanLeaveReview) { ReviewMessage = "Лише покупці цього альбому можуть залишити відгук."; return; }
-        if (string.IsNullOrWhiteSpace(NewReviewText)) { ReviewMessage = "Введіть текст відгуку."; return; }
-        var productId = _catalog.GetPrimaryProductId(album.Id);
-        if (productId is null) { ReviewMessage = "Альбом не має продукту для відгуку."; return; }
-
-        _catalog.AddReview(productId.Value, user.Id, user.Username, NewReviewText, NewReviewRating);
-        NewReviewText = string.Empty;
-        NewReviewRating = 5;
-        ReviewMessage = "Дякуємо! Ваш відгук додано.";
-        IsReviewFormOpen = false;
-        ReloadReviews(album);
-    }
 
     [RelayCommand]
     private async Task AddLocalFilesAsync()

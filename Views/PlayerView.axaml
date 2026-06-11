@@ -21,23 +21,23 @@
                     <ItemsControl ItemsSource="{Binding PurchasedAlbums}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" ItemWidth="226" ItemHeight="300"/>
+                                <WrapPanel Orientation="Horizontal" ItemWidth="180" ItemHeight="240"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="m:Album">
-                                <Button Classes="ghost" Padding="10" Margin="0,0,16,16"
+                                <Button Classes="ghost" Padding="8" Margin="0,0,12,12"
                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
-                                    <StackPanel Spacing="12" Width="196">
-                                        <Border Width="196" Height="196"
+                                    <StackPanel Spacing="10" Width="156">
+                                        <Border Width="156" Height="156"
                                                 CornerRadius="{StaticResource RadiusS}"
                                                 Background="{Binding ., Converter={StaticResource AlbumToGradient}}"
                                                 ClipToBounds="True"
                                                 BoxShadow="0 6 18 0 #66000000">
                                             <Grid>
                                                 <TextBlock Text="{Binding Title, Converter={StaticResource FirstChar}}"
-                                                           FontSize="70" FontWeight="Bold" Opacity="0.45"
+                                                           FontSize="56" FontWeight="Bold" Opacity="0.45"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            Foreground="{StaticResource FgPrimaryBrush}"
                                                            IsVisible="{Binding CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
@@ -45,9 +45,9 @@
                                                        Stretch="UniformToFill"/>
                                             </Grid>
                                         </Border>
-                                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
+                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                    TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Artist.Name}" Classes="muted" FontSize="14"
+                                        <TextBlock Text="{Binding Artist.Name}" Classes="muted" FontSize="11"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                 </Button>
@@ -56,23 +56,23 @@
                     </ItemsControl>
 
                     <!-- "+ add" tile, same card footprint as albums -->
-                    <Button Classes="ghost" Padding="10"
+                    <Button Classes="ghost" Padding="8"
                             HorizontalAlignment="Left"
                             Command="{Binding AddLocalFilesCommand}">
-                        <StackPanel Spacing="12" Width="196">
-                            <Border Width="196" Height="196"
+                        <StackPanel Spacing="10" Width="156">
+                            <Border Width="156" Height="156"
                                     CornerRadius="{StaticResource RadiusS}"
                                     Background="{StaticResource BgElevatedBrush}"
                                     BorderBrush="{StaticResource DividerSoftBrush}"
                                     BorderThickness="1">
                                 <TextBlock Text="+"
-                                           FontSize="80" FontWeight="Light"
+                                           FontSize="64" FontWeight="Light"
                                            Foreground="{StaticResource FgSecondaryBrush}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="Додати файли / плейлист / папку"
-                                       FontSize="14" Classes="muted"
+                                       FontSize="12" Classes="muted"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
                     </Button>
@@ -81,7 +81,7 @@
                                Text="Поки немає куплених альбомів. Купіть щось у каталозі або додайте локальні файли."
                                TextWrapping="Wrap"
                                IsVisible="{Binding !HasPurchasedAlbums}"
-                               MaxWidth="600"/>
+                               MaxWidth="480"/>
                 </StackPanel>
             </ScrollViewer>
 
@@ -89,12 +89,12 @@
             <ScrollViewer IsVisible="{Binding HasSelectedAlbum}"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="28" Margin="32,24,32,24" MaxWidth="1376" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="28" Margin="32,24,32,24" MaxWidth="1100" HorizontalAlignment="Stretch">
 
                     <!-- ===== Header ===== -->
-                    <Grid ColumnDefinitions="300,*">
+                    <Grid ColumnDefinitions="240,*">
                         <!-- Cover acts as a button → opens fullscreen overlay on the shell. -->
-                        <Button Grid.Column="0" Width="300" Height="300"
+                        <Button Grid.Column="0" Width="240" Height="240"
                                 Padding="0" Background="Transparent" BorderThickness="0"
                                 Cursor="Hand"
                                 CornerRadius="{StaticResource RadiusL}"
@@ -107,7 +107,7 @@
                                     BoxShadow="0 12 32 0 #66000000">
                                 <Grid>
                                     <TextBlock Text="{Binding HeaderTitle, Converter={StaticResource FirstChar}}"
-                                               FontSize="108" FontWeight="Bold" Opacity="0.45"
+                                               FontSize="86" FontWeight="Bold" Opacity="0.45"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource FgPrimaryBrush}"
                                                IsVisible="{Binding SelectedAlbum.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
@@ -163,25 +163,25 @@
                                            IsVisible="{Binding HasTotalDuration}"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,20,0,0">
-                                <Button Classes="play-circle" Width="60" Height="60" CornerRadius="30"
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">
+                                <Button Classes="play-circle" Width="48" Height="48" CornerRadius="24"
                                         Command="{Binding PlaySelectedAlbumCommand}"
                                         ToolTip.Tip="Слухати альбом">
-                                    <Path Data="{StaticResource IconPlay}" Fill="Black" Stroke="Transparent"
-                                          Width="20" Height="20" Stretch="Uniform"/>
+                                    <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                                          Width="16" Height="16" Stretch="Uniform"/>
                                 </Button>
-                                <Button Classes="icon" Width="50" Height="50"
+                                <Button Classes="icon" Width="40" Height="40"
                                         Command="{Binding ToggleShuffleCommand}"
                                         ToolTip.Tip="Перемішати">
-                                    <Path Width="26" Height="26"
+                                    <Path Width="20" Height="20"
                                           Classes="icon"
                                           Classes.accent="{Binding IsShuffleOn}"
                                           Data="{StaticResource IconShuffle}"/>
                                 </Button>
-                                <Button Classes="icon" Width="50" Height="50"
+                                <Button Classes="icon" Width="40" Height="40"
                                         Command="{Binding CycleRepeatCommand}"
                                         ToolTip.Tip="Повтор">
-                                    <Path Width="26" Height="26"
+                                    <Path Width="20" Height="20"
                                           Classes="icon"
                                           Classes.accent="{Binding RepeatMode, Converter={StaticResource RepeatModeNotOff}}"
                                           Data="{Binding RepeatMode, Converter={StaticResource RepeatModeToIcon}}"/>
@@ -191,7 +191,7 @@
                     </Grid>
 
                     <!-- Description -->
-                    <StackPanel IsVisible="{Binding HasDescription}" Spacing="6" MaxWidth="976" HorizontalAlignment="Left">
+                    <StackPanel IsVisible="{Binding HasDescription}" Spacing="6" MaxWidth="780" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding AlbumDescription}" TextWrapping="Wrap"
                                    MaxLines="3" Classes="muted"
                                    IsVisible="{Binding !IsDescriptionExpanded}"/>
@@ -216,9 +216,9 @@
                             <ItemsControl ItemsSource="{Binding Tracks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TrackRowViewModel">
-                                        <Border CornerRadius="{StaticResource RadiusS}" Padding="8,6" Margin="0,1"
+                                        <Border CornerRadius="{StaticResource RadiusS}" Padding="6,4" Margin="0,1"
                                                 Background="{Binding IsCurrent, Converter={StaticResource BoolToHighlightBrush}}">
-                                            <Grid ColumnDefinitions="46,*,Auto,Auto">
+                                            <Grid ColumnDefinitions="36,*,Auto,Auto">
                                                 <Grid Grid.Column="0">
                                                     <TextBlock Text="{Binding Position}"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -226,13 +226,13 @@
                                                                IsVisible="{Binding !IsCurrent}"/>
                                                     <Path Classes="icon sm accent filled"
                                                           Data="{StaticResource IconCircleFilled}"
-                                                          Width="14" Height="14"
+                                                          Width="10" Height="10"
                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
                                                           IsVisible="{Binding IsCurrent}"/>
                                                 </Grid>
                                                 <Button Grid.Column="1" Classes="ghost"
                                                         HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Left" Padding="10,8"
+                                                        HorizontalContentAlignment="Left" Padding="8,6"
                                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).PlayTrackCommand}"
                                                         CommandParameter="{Binding}">
                                                     <TextBlock Text="{Binding Title}"
@@ -240,10 +240,10 @@
                                                                Foreground="{Binding IsCurrent, Converter={StaticResource BoolToCurrentForeground}}"
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </Button>
-                                                <Button Grid.Column="2" Classes="icon" Width="40" Height="40"
+                                                <Button Grid.Column="2" Classes="icon" Width="32" Height="32"
                                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).ToggleTrackLikeCommand}"
                                                         CommandParameter="{Binding}">
-                                                    <Path Width="20" Height="20"
+                                                    <Path Width="16" Height="16"
                                                           Classes="icon"
                                                           Classes.filled="{Binding IsLiked}"
                                                           Classes.accent="{Binding IsLiked}"
@@ -251,7 +251,7 @@
                                                 </Button>
                                                 <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}"
                                                            Classes="muted" VerticalAlignment="Center"
-                                                           Margin="12,0,10,0" Width="52" TextAlignment="Right"/>
+                                                           Margin="10,0,8,0" Width="42" TextAlignment="Right"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -268,22 +268,22 @@
                             <ItemsControl ItemsSource="{Binding MoreFromArtist}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="18"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="14"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="m:Album">
-                                        <Button Classes="ghost" Padding="8"
+                                        <Button Classes="ghost" Padding="6"
                                                 Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).GoToArtistAlbumCommand}"
                                                 CommandParameter="{Binding}">
-                                            <StackPanel Width="176" Spacing="10">
-                                                <Border Width="176" Height="176"
+                                            <StackPanel Width="140" Spacing="8">
+                                                <Border Width="140" Height="140"
                                                         CornerRadius="{StaticResource RadiusS}"
                                                         Background="{Binding ., Converter={StaticResource AlbumToGradient}}"
                                                         ClipToBounds="True">
                                                     <Grid>
                                                         <TextBlock Text="{Binding Title, Converter={StaticResource FirstChar}}"
-                                                                   FontSize="52" FontWeight="Bold" Opacity="0.45"
+                                                                   FontSize="42" FontWeight="Bold" Opacity="0.45"
                                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                    Foreground="{StaticResource FgPrimaryBrush}"
                                                                    IsVisible="{Binding CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
@@ -291,9 +291,9 @@
                                                                Stretch="UniformToFill"/>
                                                     </Grid>
                                                 </Border>
-                                                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
+                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding Year}" FontSize="14" Classes="muted"/>
+                                                <TextBlock Text="{Binding Year}" FontSize="11" Classes="muted"/>
                                             </StackPanel>
                                         </Button>
                                     </DataTemplate>

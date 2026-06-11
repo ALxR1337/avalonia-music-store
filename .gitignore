@@ -18,7 +18,9 @@ _ReSharper.Caches/
 Thumbs.db
 
 # Project-local
+.claude/
 bug-hunt/artifacts/
+MusicApp.BugHunt/TestResults/
 MusicApp.zip
 *.db
 *.db-shm

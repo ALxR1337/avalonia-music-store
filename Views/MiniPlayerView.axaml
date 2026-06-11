@@ -3,19 +3,34 @@
              xmlns:vm="using:MusicApp.ViewModels"
              x:Class="MusicApp.Views.MiniPlayerView"
              x:DataType="vm:MiniPlayerViewModel"
-             Height="90">
+             Height="80">
 
-    <Grid ColumnDefinitions="*,2*,*" VerticalAlignment="Stretch">
+    <!-- Fluent's Slider wraps its track in [SliderPreContentMargin, Auto,
+         SliderPostContentMargin] rows with a 32px MinHeight. A shorter slider
+         overflows that template asymmetrically and the track drifts below the
+         control's centre (so it never lines up with its icon). Shrinking the
+         template height and making both margins equal star rows recentres the
+         track inside the control — applies to both sliders in this bar only. -->
+    <UserControl.Resources>
+        <x:Double x:Key="SliderHorizontalHeight">22</x:Double>
+        <GridLength x:Key="SliderPreContentMargin">*</GridLength>
+        <GridLength x:Key="SliderPostContentMargin">*</GridLength>
+    </UserControl.Resources>
+
+    <!-- Spotify-style bar: the centre column is a [transport ; seek] block that
+         is vertically centred as a group (buttons above the midline, seek below),
+         while the cover (left) and volume (right) are each centred on the bar. -->
+    <Grid ColumnDefinitions="*,1.4*,*">
 
         <!-- Left: cover + track info -->
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14"
-                    VerticalAlignment="Center" Margin="20,0">
-            <Border Width="70" Height="70" CornerRadius="{StaticResource RadiusS}"
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
+                    VerticalAlignment="Center" Margin="16,0">
+            <Border Width="48" Height="48" CornerRadius="{StaticResource RadiusS}"
                     Background="{Binding CurrentAlbum, Converter={StaticResource AlbumToGradient}}"
                     ClipToBounds="True">
                 <Grid>
                     <TextBlock Text="{Binding CurrentAlbum.Title, Converter={StaticResource FirstChar}}"
-                               FontSize="28" FontWeight="Bold" Opacity="0.45"
+                               FontSize="20" FontWeight="Bold" Opacity="0.45"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{StaticResource FgPrimaryBrush}"
@@ -24,7 +39,7 @@
                            Stretch="UniformToFill"/>
                 </Grid>
             </Border>
-            <StackPanel VerticalAlignment="Center" Spacing="3" MaxWidth="276">
+            <StackPanel VerticalAlignment="Center" Spacing="2" MaxWidth="220">
                 <TextBlock Text="{Binding TrackTitle}" FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding ArtistName}" Classes="muted"
@@ -32,28 +47,41 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Center: controls + progress -->
-        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                <Button Classes="icon" Width="40" Height="40"
+        <!-- Center: transport controls over the seek strip, centred as a block -->
+        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="24,0">
+            <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+                <Button Classes="icon" Width="32" Height="32"
                         Command="{Binding PreviousCommand}">
                     <Path Classes="icon" Data="{StaticResource IconSkipBack}"/>
                 </Button>
-                <Button Classes="play-circle" Width="46" Height="46" CornerRadius="23"
+                <Button Classes="play-circle" Width="40" Height="40" CornerRadius="20"
                         Command="{Binding PlayPauseCommand}">
-                    <Path Data="{StaticResource IconPlay}" Fill="Black" Stroke="Transparent"
-                          Width="18" Height="18" Stretch="Uniform"/>
+                    <Panel>
+                        <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                              Width="16" Height="16" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              IsVisible="{Binding !IsPlaying}"/>
+                        <!-- Width:Height matches the glyph's 12x16 bounds so Uniform
+                             stretch fills it with no side padding — that padding was
+                             rounding asymmetrically (left) under fractional/XWayland
+                             scaling and dragging the bars off-centre. -->
+                        <Path Data="{StaticResource IconPause}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                              Width="12" Height="16" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              IsVisible="{Binding IsPlaying}"/>
+                    </Panel>
                 </Button>
-                <Button Classes="icon" Width="40" Height="40"
+                <Button Classes="icon" Width="32" Height="32"
                         Command="{Binding NextCommand}">
                     <Path Classes="icon" Data="{StaticResource IconSkipForward}"/>
                 </Button>
             </StackPanel>
-            <Grid ColumnDefinitions="Auto,*,Auto" Width="626">
+
+            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch" MaxWidth="640">
                 <TextBlock Grid.Column="0" Text="{Binding PositionText}"
-                           Classes="muted" FontSize="14" VerticalAlignment="Center"
-                           Margin="0,0,10,0"/>
-                <Slider Grid.Column="1" Name="SeekSlider"
+                           Classes="muted" FontSize="11" MinWidth="36" TextAlignment="Right"
+                           VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <Slider Grid.Column="1" Name="SeekSlider" VerticalAlignment="Center"
                         Minimum="0" Maximum="100"
                         Value="{Binding Progress}"
                         Foreground="{StaticResource AccentBrush}"
@@ -61,22 +89,25 @@
                         PointerCaptureLost="OnSeekPointerReleased"
                         PointerReleased="OnSeekPointerReleased"/>
                 <TextBlock Grid.Column="2" Text="{Binding DurationText}"
-                           Classes="muted" FontSize="14" VerticalAlignment="Center"
-                           Margin="10,0,0,0"/>
+                           Classes="muted" FontSize="11" MinWidth="36"
+                           VerticalAlignment="Center" Margin="12,0,0,0"/>
             </Grid>
         </StackPanel>
 
-        <!-- Right: volume + buttons -->
+        <!-- Right: volume + window buttons, centred on the bar -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
-                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0">
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
+            <!-- This glyph's geometry renders ~2px above its box centre, so it
+                 reads high next to the track/buttons; nudge it down to match. -->
             <Path Classes="icon" Data="{StaticResource IconVolume}"
-                  VerticalAlignment="Center"/>
-            <Slider Width="126" Minimum="0" Maximum="1" Value="{Binding Volume}"/>
-            <Button Classes="icon" Width="40" Height="40"
+                  VerticalAlignment="Center" Margin="0,4,0,0"/>
+            <Slider Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}"
+                    VerticalAlignment="Center"/>
+            <Button Classes="icon" Width="32" Height="32"
                     Command="{Binding ExpandCommand}">
                 <Path Classes="icon" Data="{StaticResource IconMaximize}"/>
             </Button>
-            <Button Classes="icon" Width="40" Height="40"
+            <Button Classes="icon" Width="32" Height="32"
                     Command="{Binding CloseCommand}">
                 <Path Classes="icon" Data="{StaticResource IconClose}"/>
             </Button>

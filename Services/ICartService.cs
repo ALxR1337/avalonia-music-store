@@ -16,5 +16,5 @@ public interface ICartService
     void Remove(CartItem item);
     void UpdateQuantity(CartItem item, int quantity);
     void Clear();
-    Order Checkout();
+    Order Checkout(string? shippingAddress = null, string? comment = null);
 }

@@ -41,14 +41,21 @@ public partial class MiniPlayerViewModel : ViewModelBase
         var t = _player.CurrentTrack;
         TrackTitle = t?.Title ?? "—";
         CurrentAlbum = _player.CurrentAlbum;
-        ArtistName = _player.CurrentAlbum?.Artist?.Name ?? "семпл 30 с";
+        // A 30-second preview keeps the "семпл 30 с" subtitle even though we now
+        // resolve its album for the cover art; full playback shows the artist.
+        ArtistName = _player.IsSampleMode
+            ? "семпл 30 с"
+            : (_player.CurrentAlbum?.Artist?.Name ?? "—");
         PositionText = Format(_player.Position);
         DurationText = Format(_player.Duration);
         if (!IsScrubbing)
         {
+            // Clamp: the player can report a position slightly past Duration on
+            // short samples (e.g. 0:33 over a 0:30 clip), which otherwise drags
+            // the thumb past the track end.
             Progress = _player.Duration.TotalSeconds <= 0
                 ? 0
-                : _player.Position.TotalSeconds / _player.Duration.TotalSeconds * 100.0;
+                : Math.Clamp(_player.Position.TotalSeconds / _player.Duration.TotalSeconds * 100.0, 0, 100);
         }
         IsPlaying = _player.IsPlaying;
     }

@@ -9,6 +9,7 @@
     <Color x:Key="BgCard">#FF1A1A1A</Color>
     <Color x:Key="BgCardHover">#FF242424</Color>
     <Color x:Key="BgChip">#FF2A2A2A</Color>
+    <Color x:Key="BgChipHover">#FF353535</Color>
     <Color x:Key="BgPlayer">#FF181818</Color>
 
     <Color x:Key="FgPrimary">#FFFFFFFF</Color>
@@ -19,6 +20,12 @@
     <Color x:Key="Accent">#FFE07B39</Color>
     <Color x:Key="AccentHover">#FFEB8F50</Color>
     <Color x:Key="AccentPressed">#FFC36622</Color>
+    <!-- Text/icon colour for content sitting ON the accent fill. Near-black
+         (not pure #000) gives ~6.3:1 contrast on the orange — WCAG AAA — while
+         reading softer than black and staying in tune with the dark UI. White
+         on this orange is only ~3:1 and fails AA for body text, so anything
+         drawn over AccentBrush must use this, never FgPrimary. -->
+    <Color x:Key="OnAccent">#FF121212</Color>
 
     <Color x:Key="Divider">#FF282828</Color>
     <Color x:Key="DividerSoft">#FF1F1F1F</Color>
@@ -32,6 +39,7 @@
     <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCard}" />
     <SolidColorBrush x:Key="BgCardHoverBrush" Color="{StaticResource BgCardHover}" />
     <SolidColorBrush x:Key="BgChipBrush" Color="{StaticResource BgChip}" />
+    <SolidColorBrush x:Key="BgChipHoverBrush" Color="{StaticResource BgChipHover}" />
     <SolidColorBrush x:Key="BgPlayerBrush" Color="{StaticResource BgPlayer}" />
 
     <SolidColorBrush x:Key="FgPrimaryBrush" Color="{StaticResource FgPrimary}" />
@@ -42,11 +50,38 @@
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHover}" />
     <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressed}" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="{StaticResource OnAccent}" />
 
     <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource Divider}" />
     <SolidColorBrush x:Key="DividerSoftBrush" Color="{StaticResource DividerSoft}" />
 
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Danger}" />
+
+    <!-- Slider theming (seek + volume bars in the mini-player).
+         The Fluent Slider template binds the thumb's Background to
+         {DynamicResource SliderThumbBackground} as a *local* value on the
+         <Thumb> element, which outranks any `Slider /template/ Thumb` style —
+         so recolouring the thumb is only possible by overriding these resource
+         keys. Without this the thumb renders in the default system accent
+         (blue), clashing with our warm accent track. -->
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="{StaticResource Accent}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{StaticResource AccentHover}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{StaticResource AccentPressed}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundDisabled" Color="{StaticResource FgDisabled}" />
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="{StaticResource Accent}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{StaticResource AccentHover}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{StaticResource AccentPressed}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillDisabled" Color="{StaticResource FgDisabled}" />
+    <SolidColorBrush x:Key="SliderTrackFill" Color="#FF4D4D4D" />
+    <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#FF5A5A5A" />
+    <SolidColorBrush x:Key="SliderTrackFillPressed" Color="#FF5A5A5A" />
+    <!-- Slimmer than the 20px Fluent default thumb. The overall slider height
+         is pinned per-instance in MiniPlayerView (Height=…) — the Fluent
+         SliderHorizontalHeight resource resolves via StaticResource inside the
+         theme and can't be overridden here. -->
+    <x:Double x:Key="SliderHorizontalThumbWidth">14</x:Double>
+    <x:Double x:Key="SliderHorizontalThumbHeight">14</x:Double>
+    <CornerRadius x:Key="SliderThumbCornerRadius">7</CornerRadius>
 
     <!-- Radii / spacing tokens -->
     <CornerRadius x:Key="RadiusS">4</CornerRadius>

@@ -15,6 +15,7 @@ public interface IPlayerService
     Track? CurrentTrack { get; }
     Album? CurrentAlbum { get; }
     bool IsPlaying { get; }
+    bool IsSampleMode { get; }
     TimeSpan Position { get; }
     TimeSpan Duration { get; }
     double Volume { get; set; }

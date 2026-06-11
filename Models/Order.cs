@@ -25,6 +25,7 @@ public class Order
     // even if the user, address or currency settings later change.
     public string? UserEmail { get; set; }
     public string? ShippingAddress { get; set; }
+    public string? Comment { get; set; }
     public string Currency { get; set; } = "UAH";
 
     public List<OrderItem> Items { get; set; } = new();

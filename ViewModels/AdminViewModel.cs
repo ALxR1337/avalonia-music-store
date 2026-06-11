@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MusicApp.Models;
@@ -24,8 +22,48 @@ public partial class AdminViewModel : ViewModelBase
     [ObservableProperty] private DateTime _revenueTo = DateTime.UtcNow.Date;
     [ObservableProperty] private decimal _periodRevenue;
     [ObservableProperty] private int _periodOrderCount;
+    [ObservableProperty] private StatsPeriod _activePeriod = StatsPeriod.Month;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private Order? _expandedOrder;
+
+    // True while a preset is rewriting the From/To dates, so the date-change
+    // handlers don't bounce the selection back to "Custom".
+    private bool _applyingPreset;
+
+    // Chip-tab "active" flags — one per quick period.
+    public bool IsPeriodToday => ActivePeriod == StatsPeriod.Today;
+    public bool IsPeriodWeek => ActivePeriod == StatsPeriod.Week;
+    public bool IsPeriodMonth => ActivePeriod == StatsPeriod.Month;
+    public bool IsPeriodQuarter => ActivePeriod == StatsPeriod.Quarter;
+    public bool IsPeriodYear => ActivePeriod == StatsPeriod.Year;
+    public bool IsPeriodAllTime => ActivePeriod == StatsPeriod.AllTime;
+    public bool IsPeriodCustom => ActivePeriod == StatsPeriod.Custom;
+
+    public string PeriodLabel => ActivePeriod switch
+    {
+        StatsPeriod.AllTime => "За весь час",
+        _ => $"{RevenueFrom:dd.MM.yyyy} — {RevenueTo:dd.MM.yyyy}",
+    };
+
+    partial void OnActivePeriodChanged(StatsPeriod value)
+    {
+        OnPropertyChanged(nameof(IsPeriodToday));
+        OnPropertyChanged(nameof(IsPeriodWeek));
+        OnPropertyChanged(nameof(IsPeriodMonth));
+        OnPropertyChanged(nameof(IsPeriodQuarter));
+        OnPropertyChanged(nameof(IsPeriodYear));
+        OnPropertyChanged(nameof(IsPeriodAllTime));
+        OnPropertyChanged(nameof(IsPeriodCustom));
+        OnPropertyChanged(nameof(PeriodLabel));
+    }
+
+    // Inline product editor (replaces the old modal window). Non-null while the
+    // editor panel is shown.
+    [ObservableProperty] private ProductEditViewModel? _editingProduct;
+
+    public bool IsEditingProduct => EditingProduct is not null;
+    partial void OnEditingProductChanged(ProductEditViewModel? value) =>
+        OnPropertyChanged(nameof(IsEditingProduct));
 
     public AdminViewModel(ICatalogService catalog, IFileDialogService files)
     {
@@ -64,7 +102,9 @@ public partial class AdminViewModel : ViewModelBase
 
         TotalProducts = Products.Count;
         TotalOrders = Orders.Count;
-        GrossRevenue = Orders.Sum(o => o.TotalAmount);
+        // Revenue counts only fulfilled (Completed) orders, matching RevenueForPeriod and
+        // the SalesCount aggregate — New/Processing/Cancelled are not realised income.
+        GrossRevenue = Orders.Where(o => o.Status == OrderStatus.Completed).Sum(o => o.TotalAmount);
     }
 
     private void RecalcPeriodRevenue()
@@ -72,21 +112,84 @@ public partial class AdminViewModel : ViewModelBase
         var report = _catalog.RevenueForPeriod(RevenueFrom, RevenueTo);
         PeriodRevenue = report.Total;
         PeriodOrderCount = report.OrderCount;
+        OnPropertyChanged(nameof(PeriodLabel));
     }
 
-    partial void OnRevenueFromChanged(DateTime value) => RecalcPeriodRevenue();
-    partial void OnRevenueToChanged(DateTime value) => RecalcPeriodRevenue();
+    // Editing either date by hand drops the quick-period selection to "Custom".
+    partial void OnRevenueFromChanged(DateTime value)
+    {
+        if (_applyingPreset) return;
+        ActivePeriod = StatsPeriod.Custom;
+        RecalcPeriodRevenue();
+    }
+
+    partial void OnRevenueToChanged(DateTime value)
+    {
+        if (_applyingPreset) return;
+        ActivePeriod = StatsPeriod.Custom;
+        RecalcPeriodRevenue();
+    }
+
+    // Picks a quick period (Today/Week/Month/...) and rewrites the From/To range.
+    [RelayCommand]
+    private void SelectPeriod(string period)
+    {
+        if (!Enum.TryParse<StatsPeriod>(period, ignoreCase: true, out var p)) return;
+
+        var today = DateTime.UtcNow.Date;
+        var (from, to) = p switch
+        {
+            StatsPeriod.Today   => (today, today),
+            StatsPeriod.Week    => (today.AddDays(-6), today),
+            StatsPeriod.Month   => (today.AddMonths(-1), today),
+            StatsPeriod.Quarter => (today.AddMonths(-3), today),
+            StatsPeriod.Year    => (today.AddYears(-1), today),
+            StatsPeriod.AllTime => (EarliestOrderDate(), today),
+            _ => (RevenueFrom, RevenueTo),
+        };
+
+        // Rewrite both dates without tripping the "Custom" fallback, then
+        // recompute once against the final range.
+        _applyingPreset = true;
+        RevenueFrom = from;
+        RevenueTo = to;
+        _applyingPreset = false;
+
+        ActivePeriod = p;
+        RecalcPeriodRevenue();
+    }
+
+    private DateTime EarliestOrderDate()
+        => Orders.Count > 0 ? Orders.Min(o => o.CreatedAt).Date : DateTime.UtcNow.Date;
 
     // === Product CRUD ===
 
     [RelayCommand]
-    private async Task AddProductAsync() => await ShowProductDialog(existing: null);
+    private void AddProduct() => OpenEditor(existing: null);
 
     [RelayCommand]
-    private async Task EditProductAsync(Product? product)
+    private void EditProduct(Product? product)
     {
         if (product is null) return;
-        await ShowProductDialog(product);
+        OpenEditor(product);
+    }
+
+    // Opens the inline editor panel; Save/Cancel close it via CloseRequested.
+    private void OpenEditor(Product? existing)
+    {
+        var vm = new ProductEditViewModel(_catalog, _files, existing);
+        vm.CloseRequested += () =>
+        {
+            var saved = vm.DialogResult;
+            EditingProduct = null;
+            if (saved)
+            {
+                StatusMessage = existing is null ? "Товар створено." : $"Товар #{existing.Id} оновлено.";
+                Reload();
+            }
+        };
+        StatusMessage = null;
+        EditingProduct = vm;
     }
 
     [RelayCommand]
@@ -96,22 +199,6 @@ public partial class AdminViewModel : ViewModelBase
         _catalog.SetProductActive(product.Id, false);
         StatusMessage = $"Товар #{product.Id} деактивовано.";
         Reload();
-    }
-
-    private async Task ShowProductDialog(Product? existing)
-    {
-        var owner = OwnerWindow();
-        if (owner is null) return;
-
-        var vm = new ProductEditViewModel(_catalog, _files, existing);
-        var window = new Views.ProductEditWindow { DataContext = vm };
-        var result = await window.ShowDialog<bool?>(owner);
-
-        if (result == true)
-        {
-            StatusMessage = existing is null ? "Товар створено." : $"Товар #{existing.Id} оновлено.";
-            Reload();
-        }
     }
 
     // === Order ops ===
@@ -177,11 +264,16 @@ public partial class AdminViewModel : ViewModelBase
             StatusMessage = $"Не вдалось зберегти CSV: {ex.Message}";
         }
     }
+}
 
-    private static Window? OwnerWindow()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            return desktop.MainWindow;
-        return null;
-    }
+/// <summary>Quick revenue periods for the statistics tab.</summary>
+public enum StatsPeriod
+{
+    Today,
+    Week,
+    Month,
+    Quarter,
+    Year,
+    AllTime,
+    Custom,
 }

@@ -20,6 +20,7 @@
             <conv:FirstCharConverter x:Key="FirstChar"/>
             <conv:GenreToBrushConverter x:Key="GenreToBrush"/>
             <conv:OrderStatusToUkrainianConverter x:Key="OrderStatusUa"/>
+            <conv:UkrainianPluralConverter x:Key="UkPlural"/>
             <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
             <conv:SuggestionKindToIconConverter x:Key="SuggestionKindToIcon"/>
             <conv:DoubleOffsetConverter x:Key="DoubleOffset"/>

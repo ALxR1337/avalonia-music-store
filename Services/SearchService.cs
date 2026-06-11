@@ -17,6 +17,9 @@ public class SearchService : ISearchService
     private const double WeightRating = 0.1;
     private const double WeightRecency = 0.1;
     private const int MaxFtsHits = 200;
+    private const int MaxArtistFacets = 12;
+
+    private static readonly StringComparer Ci = StringComparer.OrdinalIgnoreCase;
 
     private readonly IDbContextFactory<MusicStoreDbContext> _dbFactory;
 
@@ -25,6 +28,9 @@ public class SearchService : ISearchService
         _dbFactory = dbFactory;
     }
 
+    // The store sells albums, so search is album-centric: FTS hits on tracks,
+    // lyrics and artists all fold into the albums they belong to. Genre and
+    // artist are multi-select OR facets; the numeric/format/stock constraints AND.
     public SearchResults Search(string query, SearchFilters? filters = null)
     {
         filters ??= new SearchFilters();
@@ -33,51 +39,25 @@ public class SearchService : ISearchService
         using var db = _dbFactory.CreateDbContext();
 
         var hits = ExecuteFtsHits(db, ast);
-        var (albums, artists, tracks, reviews) = LoadEntities(db, hits);
+        var candidates = RollupToAlbums(db, hits);
 
-        var filteredAlbums = ApplyAlbumFilters(albums, filters).ToList();
-        var filteredArtistAlbums = ApplyArtistAlbumFilters(artists, db, filters);
-
-        var products = BuildProducts(db, filteredAlbums.Select(s => s.Album.Id).ToList(), filters);
-
-        var facets = ComputeFacets(db, filteredAlbums, filters);
+        var albums = BuildHits(candidates, filters);
+        var facets = ComputeFacets(candidates, filters);
 
         string? didYouMean = null;
-        if (filteredAlbums.Count + filteredArtistAlbums.Count + tracks.Count < 3
-            && ast.Terms.OfType<FreeTextTerm>().Any())
-        {
+        if (albums.Count < 3 && ast.Terms.OfType<FreeTextTerm>().Any())
             didYouMean = SuggestSpellingCorrection(db, ast);
-        }
-
-        var albumsRanked = filteredAlbums.OrderByDescending(s => s.Score).ToList();
-        var artistsRanked = filteredArtistAlbums.OrderByDescending(s => s.Score).ToList();
-        var tracksRanked = tracks.OrderByDescending(s => s.Score).ToList();
-        var reviewsRanked = reviews.OrderByDescending(s => s.Score).ToList();
-
-        object? topResult = filters.Tab switch
-        {
-            SearchTab.Artists => artistsRanked.FirstOrDefault(),
-            SearchTab.Tracks => tracksRanked.FirstOrDefault(),
-            SearchTab.Reviews => reviewsRanked.FirstOrDefault(),
-            _ => (object?)albumsRanked.FirstOrDefault() ?? artistsRanked.FirstOrDefault()
-        };
-
-        var total = albumsRanked.Count + artistsRanked.Count + tracksRanked.Count + reviewsRanked.Count;
 
         return new SearchResults
         {
             Query = ast,
             RawQuery = query ?? string.Empty,
             Filters = filters,
-            Albums = albumsRanked,
-            Artists = artistsRanked,
-            Tracks = tracksRanked,
-            Reviews = reviewsRanked,
-            Products = products,
+            Albums = albums,
             Facets = facets,
             DidYouMean = didYouMean,
-            TopResult = topResult,
-            TotalCount = total
+            TopResult = albums.FirstOrDefault(),
+            TotalCount = albums.Count
         };
     }
 
@@ -87,7 +67,7 @@ public class SearchService : ISearchService
 
     private List<FtsHit> ExecuteFtsHits(MusicStoreDbContext db, SearchQuery ast)
     {
-        var matchClause = BuildMatchClause(ast, out var typeRestriction);
+        var matchClause = BuildMatchClause(ast);
 
         var conn = db.Database.GetDbConnection();
         if (conn.State != System.Data.ConnectionState.Open) conn.Open();
@@ -96,17 +76,10 @@ public class SearchService : ISearchService
 
         if (string.IsNullOrWhiteSpace(matchClause))
         {
-            // No text constraints — fall back to a browse-mode candidate set:
-            // newest+most-popular albums and artists, so filters still produce results.
+            // Browse mode (no text constraints): every album is a candidate so
+            // genre/artist/year filters over an empty query stay complete.
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-                SELECT ct, cid FROM (
-                    SELECT 'album' AS ct, Id AS cid, Year AS ord FROM Albums ORDER BY Year DESC LIMIT 50
-                )
-                UNION ALL
-                SELECT ct, cid FROM (
-                    SELECT 'artist' AS ct, Id AS cid FROM Artists LIMIT 50
-                );";
+            cmd.CommandText = "SELECT 'album' AS ct, Id AS cid FROM Albums;";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 hits.Add(new FtsHit(r.GetString(0), r.GetInt32(1), 1.0));
@@ -115,24 +88,16 @@ public class SearchService : ISearchService
 
         using (var cmd = conn.CreateCommand())
         {
-            var sql = new StringBuilder(@"
+            // No content_type narrowing beyond dropping reviews: an artist match
+            // must still surface that artist's albums (that was the bug behind
+            // "виконавець:..." opening an empty profile), and tracks fold into albums.
+            cmd.CommandText = @"
                 SELECT content_type, content_id, -bm25(SearchIndex) AS relevance
                 FROM SearchIndex
-                WHERE SearchIndex MATCH $match");
-            if (typeRestriction.Count > 0)
-            {
-                var list = string.Join(",", typeRestriction.Select((_, i) => $"$ct{i}"));
-                sql.Append($" AND content_type IN ({list})");
-                for (int i = 0; i < typeRestriction.Count; i++)
-                {
-                    var p = cmd.CreateParameter();
-                    p.ParameterName = $"$ct{i}";
-                    p.Value = typeRestriction[i];
-                    cmd.Parameters.Add(p);
-                }
-            }
-            sql.Append(" ORDER BY relevance DESC LIMIT ").Append(MaxFtsHits).Append(';');
-            cmd.CommandText = sql.ToString();
+                WHERE SearchIndex MATCH $match
+                  AND content_type IN ('album','track','artist')
+                ORDER BY relevance DESC
+                LIMIT " + MaxFtsHits + ";";
 
             var matchParam = cmd.CreateParameter();
             matchParam.ParameterName = "$match";
@@ -147,9 +112,8 @@ public class SearchService : ISearchService
         return hits;
     }
 
-    private static string BuildMatchClause(SearchQuery q, out List<string> typeRestriction)
+    private static string BuildMatchClause(SearchQuery q)
     {
-        typeRestriction = new List<string>();
         var parts = new List<string>();
 
         foreach (var t in q.Terms)
@@ -162,28 +126,19 @@ public class SearchService : ISearchService
                 case PhraseTerm p:
                     parts.Add((p.Excluded ? "-" : "") + "\"" + p.Phrase.Replace("\"", "\"\"") + "\"");
                     break;
+                // Field operators still bias the text match (prefix/phrase/exclusion)
+                // but no longer pin content_type — the rollup decides which albums win.
                 case FieldTextTerm ftx when ftx.Field is "artist" or "album" or "track" or "lyrics":
                     parts.Add((ftx.Excluded ? "-" : "") + EscapeTerm(ftx.Value) + "*");
-                    if (!ftx.Excluded) typeRestriction.Add(FieldToContentType(ftx.Field));
                     break;
                 case FieldPhraseTerm fpx when fpx.Field is "artist" or "album" or "track" or "lyrics":
                     parts.Add((fpx.Excluded ? "-" : "") + "\"" + fpx.Phrase.Replace("\"", "\"\"") + "\"");
-                    if (!fpx.Excluded) typeRestriction.Add(FieldToContentType(fpx.Field));
                     break;
                 // genre/format/year/price/rating are post-filters — ignore here.
             }
         }
-        typeRestriction = typeRestriction.Distinct().ToList();
         return string.Join(" ", parts);
     }
-
-    private static string FieldToContentType(string field) => field switch
-    {
-        "artist" => "artist",
-        "album" => "album",
-        "track" or "lyrics" => "track",
-        _ => "album"
-    };
 
     private static string EscapeTerm(string raw)
     {
@@ -195,103 +150,110 @@ public class SearchService : ISearchService
         return sb.Length == 0 ? raw : sb.ToString();
     }
 
-    // === Entity loading ===
+    // === Roll FTS hits up to albums ===
 
-    private (
-        List<ScoredAlbum> albums,
-        List<ScoredArtist> artists,
-        List<ScoredTrack> tracks,
-        List<ScoredReview> reviews)
-        LoadEntities(MusicStoreDbContext db, List<FtsHit> hits)
+    private sealed class AlbumCandidate
     {
-        var albumIds = hits.Where(h => h.ContentType == "album").Select(h => h.ContentId).Distinct().ToList();
-        var artistIds = hits.Where(h => h.ContentType == "artist").Select(h => h.ContentId).Distinct().ToList();
-        var trackIds = hits.Where(h => h.ContentType == "track").Select(h => h.ContentId).Distinct().ToList();
-        var reviewIds = hits.Where(h => h.ContentType == "review").Select(h => h.ContentId).Distinct().ToList();
+        public Album Album = null!;
+        public List<Product> Products = new();
+        public double Bm25;                       // best contributing raw bm25
+        public AlbumMatchKind Match;
+        public List<MatchedTrack> MatchedTracks = new();
+        public double Score;
+    }
 
-        var albumRows = albumIds.Count == 0 ? new List<Album>() : db.Albums.AsNoTracking()
+    private List<AlbumCandidate> RollupToAlbums(MusicStoreDbContext db, List<FtsHit> hits)
+    {
+        if (hits.Count == 0) return new List<AlbumCandidate>();
+
+        var bm25ByAlbum = hits.Where(h => h.ContentType == "album")
+            .GroupBy(h => h.ContentId).ToDictionary(g => g.Key, g => g.Max(h => h.Relevance));
+        var bm25ByTrack = hits.Where(h => h.ContentType == "track")
+            .GroupBy(h => h.ContentId).ToDictionary(g => g.Key, g => g.Max(h => h.Relevance));
+        var bm25ByArtist = hits.Where(h => h.ContentType == "artist")
+            .GroupBy(h => h.ContentId).ToDictionary(g => g.Key, g => g.Max(h => h.Relevance));
+
+        var maxBm25 = Math.Max(1e-9, hits.Max(h => h.Relevance));
+
+        var trackIds = bm25ByTrack.Keys.ToList();
+        var trackRows = trackIds.Count == 0
+            ? new List<Track>()
+            : db.Tracks.AsNoTracking().Where(t => trackIds.Contains(t.Id)).ToList();
+
+        var artistIds = bm25ByArtist.Keys.ToList();
+        var artistAlbumRows = artistIds.Count == 0
+            ? new List<(int AlbumId, int ArtistId)>()
+            : db.Albums.AsNoTracking()
+                .Where(a => artistIds.Contains(a.ArtistId))
+                .Select(a => new { a.Id, a.ArtistId })
+                .AsEnumerable()
+                .Select(a => (AlbumId: a.Id, a.ArtistId))
+                .ToList();
+
+        var acc = new Dictionary<int, AlbumCandidate>();
+        AlbumCandidate Get(int albumId)
+        {
+            if (!acc.TryGetValue(albumId, out var c)) { c = new AlbumCandidate(); acc[albumId] = c; }
+            return c;
+        }
+
+        foreach (var (albumId, bm) in bm25ByAlbum)
+        {
+            var c = Get(albumId);
+            c.Bm25 = Math.Max(c.Bm25, bm);
+            c.Match |= AlbumMatchKind.Title;
+        }
+        foreach (var t in trackRows)
+        {
+            var c = Get(t.AlbumId);
+            c.Bm25 = Math.Max(c.Bm25, bm25ByTrack.GetValueOrDefault(t.Id, 0.0));
+            c.Match |= AlbumMatchKind.Track;
+            c.MatchedTracks.Add(new MatchedTrack(t, AlbumMatchKind.Track));
+        }
+        foreach (var row in artistAlbumRows)
+        {
+            var c = Get(row.AlbumId);
+            c.Bm25 = Math.Max(c.Bm25, bm25ByArtist.GetValueOrDefault(row.ArtistId, 0.0));
+            c.Match |= AlbumMatchKind.Artist;
+        }
+
+        var albumIds = acc.Keys.ToList();
+        if (albumIds.Count == 0) return new List<AlbumCandidate>();
+
+        var albums = db.Albums.AsNoTracking()
             .Include(a => a.Artist)
-            .Include(a => a.Tracks)
             .Include(a => a.AlbumGenres).ThenInclude(ag => ag.Genre)
             .Where(a => albumIds.Contains(a.Id))
             .ToList();
 
-        var artistRows = artistIds.Count == 0 ? new List<Artist>() : db.Artists.AsNoTracking()
-            .Where(a => artistIds.Contains(a.Id))
-            .ToList();
+        var productsByAlbum = db.Products.AsNoTracking()
+            .Where(p => albumIds.Contains(p.AlbumId))
+            .ToList()
+            .GroupBy(p => p.AlbumId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var trackRows = trackIds.Count == 0 ? new List<Track>() : db.Tracks.AsNoTracking()
-            .Where(t => trackIds.Contains(t.Id))
-            .ToList();
-
-        var reviewRows = reviewIds.Count == 0 ? new List<Review>() : db.Reviews.AsNoTracking()
-            .Where(r => reviewIds.Contains(r.Id))
-            .ToList();
-
-        var bm25ByAlbum = hits.Where(h => h.ContentType == "album").ToDictionary(h => h.ContentId, h => h.Relevance);
-        var bm25ByArtist = hits.Where(h => h.ContentType == "artist").ToDictionary(h => h.ContentId, h => h.Relevance);
-        var bm25ByTrack = hits.Where(h => h.ContentType == "track").ToDictionary(h => h.ContentId, h => h.Relevance);
-        var bm25ByReview = hits.Where(h => h.ContentType == "review").ToDictionary(h => h.ContentId, h => h.Relevance);
-
-        var maxBm25 = hits.Count == 0 ? 1.0 : Math.Max(1e-9, hits.Max(h => h.Relevance));
-
-        // Sales-per-album (for popularity component on album rows)
-        var salesPerAlbum = albumIds.Count == 0
-            ? new Dictionary<int, int>()
-            : db.Products.AsNoTracking()
-                .Where(p => albumIds.Contains(p.AlbumId))
-                .GroupBy(p => p.AlbumId)
-                .Select(g => new { AlbumId = g.Key, Sales = g.Sum(p => p.SalesCount) })
-                .ToDictionary(x => x.AlbumId, x => x.Sales);
-
-        var ratingPerAlbum = albumIds.Count == 0
-            ? new Dictionary<int, double>()
-            : db.Products.AsNoTracking()
-                .Where(p => albumIds.Contains(p.AlbumId) && p.Rating > 0)
-                .GroupBy(p => p.AlbumId)
-                .Select(g => new { AlbumId = g.Key, Rating = g.Average(p => p.Rating) })
-                .ToDictionary(x => x.AlbumId, x => x.Rating);
-
-        var maxSales = salesPerAlbum.Values.DefaultIfEmpty(0).Max();
+        var salesByAlbum = productsByAlbum
+            .ToDictionary(kv => kv.Key, kv => kv.Value.Sum(p => p.SalesCount));
+        var maxSales = salesByAlbum.Values.DefaultIfEmpty(0).Max();
         var logMaxSales = maxSales <= 0 ? 1.0 : Math.Log(1.0 + maxSales);
 
-        var albums = albumRows.Select(a =>
+        var list = new List<AlbumCandidate>(albums.Count);
+        foreach (var a in albums)
         {
-            var bm = bm25ByAlbum.GetValueOrDefault(a.Id, 0.0);
-            var bmNorm = bm / maxBm25;
-            var sales = salesPerAlbum.GetValueOrDefault(a.Id, 0);
+            var c = acc[a.Id];
+            c.Album = a;
+            c.Products = productsByAlbum.GetValueOrDefault(a.Id, new List<Product>());
+
+            var bmNorm = c.Bm25 / maxBm25;
+            var sales = salesByAlbum.GetValueOrDefault(a.Id, 0);
             var pop = Math.Log(1.0 + sales) / logMaxSales;
-            var rating = ratingPerAlbum.GetValueOrDefault(a.Id, 0.0) / 5.0;
+            var rating = c.Products.Where(p => p.Rating > 0).Select(p => p.Rating).DefaultIfEmpty(0).Average() / 5.0;
             var recency = RecencyFromYear(a.Year);
-            var score = WeightBm25 * bmNorm + WeightPopularity * pop + WeightRating * rating + WeightRecency * recency;
-            return new ScoredAlbum(a, score, bm, pop);
-        }).ToList();
+            c.Score = WeightBm25 * bmNorm + WeightPopularity * pop + WeightRating * rating + WeightRecency * recency;
 
-        var artists = artistRows.Select(a =>
-        {
-            var bm = bm25ByArtist.GetValueOrDefault(a.Id, 0.0);
-            var bmNorm = bm / maxBm25;
-            var score = WeightBm25 * bmNorm;
-            return new ScoredArtist(a, score, bm);
-        }).ToList();
-
-        var tracks = trackRows.Select(t =>
-        {
-            var bm = bm25ByTrack.GetValueOrDefault(t.Id, 0.0);
-            var bmNorm = bm / maxBm25;
-            var score = WeightBm25 * bmNorm;
-            return new ScoredTrack(t, score, bm);
-        }).ToList();
-
-        var reviews = reviewRows.Select(r =>
-        {
-            var bm = bm25ByReview.GetValueOrDefault(r.Id, 0.0);
-            var bmNorm = bm / maxBm25;
-            var score = WeightBm25 * bmNorm;
-            return new ScoredReview(r, score, bm);
-        }).ToList();
-
-        return (albums, artists, tracks, reviews);
+            list.Add(c);
+        }
+        return list;
     }
 
     private static double RecencyFromYear(int year)
@@ -302,112 +264,108 @@ public class SearchService : ISearchService
         return Math.Exp(-days / 365.0);
     }
 
-    // === Filters ===
+    // === Filters → purchasable album hits ===
 
-    private static IEnumerable<ScoredAlbum> ApplyAlbumFilters(List<ScoredAlbum> albums, SearchFilters f)
+    private static List<AlbumHit> BuildHits(List<AlbumCandidate> candidates, SearchFilters f)
     {
-        foreach (var s in albums)
+        var hits = new List<AlbumHit>();
+        foreach (var c in candidates)
         {
-            var a = s.Album;
+            var a = c.Album;
             if (f.YearFrom is int yf && a.Year < yf) continue;
             if (f.YearTo is int yt && a.Year > yt) continue;
-            if (!string.IsNullOrEmpty(f.Genre) && !AlbumMatchesGenre(a, f.Genre)) continue;
-            yield return s;
+            if (f.Genres.Count > 0 && !AlbumMatchesGenres(a, f.Genres, f.GenresMatchAll)) continue;
+            if (f.Artists.Count > 0 && !ArtistMatches(a, f.Artists)) continue;
+
+            // An album shows up only if it has a purchasable product that clears the
+            // numeric/format/stock filters — that product becomes the card's primary.
+            var primary = c.Products
+                .Where(p => ProductPasses(p, f))
+                .OrderBy(p => p.PriceCents)
+                .FirstOrDefault();
+            if (primary is null) continue;
+
+            hits.Add(new AlbumHit(a, primary, c.Score, c.Match, c.MatchedTracks));
         }
+        return hits.OrderByDescending(h => h.Score).ToList();
     }
 
-    private static bool AlbumMatchesGenre(Album a, string genre)
+    private static bool ProductPasses(Product p, SearchFilters f)
     {
-        if (string.Equals(a.Genre?.Name, genre, StringComparison.OrdinalIgnoreCase)) return true;
-        return a.AlbumGenres?.Any(ag =>
-            string.Equals(ag.Genre?.Name, genre, StringComparison.OrdinalIgnoreCase)) == true;
+        if (!p.IsActive) return false;
+        if (f.Format is ProductFormat fmt && p.Format != fmt) return false;
+        if (f.PriceFrom is decimal pf && p.Price < pf) return false;
+        if (f.PriceTo is decimal pt && p.Price > pt) return false;
+        if (f.MinRating is double mr && p.Rating < mr) return false;
+        if (f.InStockOnly && p.Stock <= 0) return false;
+        return true;
     }
 
-    private List<ScoredArtist> ApplyArtistAlbumFilters(List<ScoredArtist> artists, MusicStoreDbContext db, SearchFilters f)
+    private static bool AlbumMatchesGenres(Album a, IReadOnlyList<string> genres, bool matchAll)
     {
-        // Artist hits are not filtered by year/price/etc. — they only carry text relevance.
-        return artists;
+        var names = new HashSet<string>(
+            a.AlbumGenres.Where(ag => ag.Genre?.Name is not null).Select(ag => ag.Genre!.Name), Ci);
+        return matchAll ? genres.All(names.Contains) : genres.Any(names.Contains);
     }
 
-    private List<Product> BuildProducts(MusicStoreDbContext db, List<int> albumIds, SearchFilters f)
-    {
-        if (albumIds.Count == 0) return new List<Product>();
-
-        var query = db.Products.AsNoTracking()
-            .Include(p => p.Album)!.ThenInclude(a => a!.Artist)
-            .Include(p => p.Album)!.ThenInclude(a => a!.AlbumGenres).ThenInclude(ag => ag.Genre)
-            .Where(p => albumIds.Contains(p.AlbumId));
-
-        if (f.Format is ProductFormat fmt) query = query.Where(p => p.Format == fmt);
-        if (f.PriceFrom is decimal pf)
-        {
-            var pfCents = (long)Math.Round(pf * 100m, MidpointRounding.AwayFromZero);
-            query = query.Where(p => p.PriceCents >= pfCents);
-        }
-        if (f.PriceTo is decimal pt)
-        {
-            var ptCents = (long)Math.Round(pt * 100m, MidpointRounding.AwayFromZero);
-            query = query.Where(p => p.PriceCents <= ptCents);
-        }
-        if (f.MinRating is double mr) query = query.Where(p => p.Rating >= mr);
-        if (f.InStockOnly) query = query.Where(p => p.Stock > 0);
-        if (!string.IsNullOrEmpty(f.Genre))
-            query = query.Where(p => p.Album!.AlbumGenres.Any(ag => ag.Genre!.Name == f.Genre));
-        if (f.YearFrom is int yf) query = query.Where(p => p.Album!.Year >= yf);
-        if (f.YearTo is int yt) query = query.Where(p => p.Album!.Year <= yt);
-
-        return query.OrderBy(p => p.AlbumId).ThenBy(p => p.Format).ToList();
-    }
+    private static bool ArtistMatches(Album a, IReadOnlyList<string> artists)
+        => a.Artist?.Name is string n && artists.Contains(n, Ci);
 
     // === Facets ===
 
-    private List<FacetGroup> ComputeFacets(MusicStoreDbContext db, List<ScoredAlbum> albums, SearchFilters filters)
+    // Counts are computed over the candidate set narrowed only by the year range,
+    // not by the genre/artist/format selections themselves — so toggling one genre
+    // does not zero out the other options (correct multi-select facet behaviour).
+    private List<FacetGroup> ComputeFacets(List<AlbumCandidate> candidates, SearchFilters filters)
     {
-        if (albums.Count == 0)
-            return new List<FacetGroup>();
+        var facetBase = candidates.Where(c =>
+            (filters.YearFrom is not int yf || c.Album.Year >= yf) &&
+            (filters.YearTo is not int yt || c.Album.Year <= yt) &&
+            c.Products.Any(p => p.IsActive)).ToList();
 
-        var albumIds = albums.Select(s => s.Album.Id).ToList();
+        if (facetBase.Count == 0) return new List<FacetGroup>();
 
-        var products = db.Products.AsNoTracking()
-            .Include(p => p.Album)!.ThenInclude(a => a!.AlbumGenres).ThenInclude(ag => ag.Genre)
-            .Where(p => albumIds.Contains(p.AlbumId))
+        var genreBuckets = facetBase
+            .SelectMany(c => c.Album.AlbumGenres
+                .Where(ag => ag.Genre?.Name is not null)
+                .Select(ag => ag.Genre!.Name)
+                .Distinct(Ci)
+                .Select(name => (Name: name, AlbumId: c.Album.Id)))
+            .GroupBy(x => x.Name, Ci)
+            .Select(g => new FacetBucket("genre", g.Key, g.Select(x => x.AlbumId).Distinct().Count(),
+                filters.Genres.Contains(g.Key, Ci)))
+            .OrderByDescending(b => b.Count).ThenBy(b => b.Label)
             .ToList();
 
-        // Each album contributes to every genre it sits in (primary + extras live
-        // together in AlbumGenres).
-        var genreBuckets = products
-            .SelectMany(p =>
-            {
-                var names = p.Album?.AlbumGenres?
-                    .Where(ag => ag.Genre?.Name is not null)
-                    .Select(ag => ag.Genre!.Name)
-                    ?? Enumerable.Empty<string>();
-                return names.Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Select(name => new { Name = name, AlbumId = p.AlbumId });
-            })
-            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new FacetBucket("genre", g.Key, g.Select(x => x.AlbumId).Distinct().Count(),
-                string.Equals(g.Key, filters.Genre, StringComparison.OrdinalIgnoreCase)))
+        var artistBuckets = facetBase
+            .Where(c => c.Album.Artist?.Name is not null)
+            .GroupBy(c => c.Album.Artist!.Name, Ci)
+            .Select(g => new FacetBucket("artist", g.Key, g.Select(c => c.Album.Id).Distinct().Count(),
+                filters.Artists.Contains(g.Key, Ci)))
+            .OrderByDescending(b => b.Count).ThenBy(b => b.Label)
+            .Take(MaxArtistFacets)
+            .ToList();
+
+        var formatBuckets = facetBase
+            .SelectMany(c => c.Products.Where(p => p.IsActive)
+                .Select(p => (p.Format, AlbumId: c.Album.Id)))
+            .GroupBy(x => x.Format)
+            .Select(g => new FacetBucket("format", g.Key == ProductFormat.Vinyl ? "Вініл LP" : "CD",
+                g.Select(x => x.AlbumId).Distinct().Count(), filters.Format == g.Key))
             .OrderByDescending(b => b.Count)
             .ToList();
 
-        var formatBuckets = products
-            .GroupBy(p => p.Format)
-            .Select(g => new FacetBucket("format", g.Key == ProductFormat.Vinyl ? "Вініл LP" : "CD", g.Count(),
-                filters.Format == g.Key))
-            .ToList();
+        var inStock = facetBase.Count(c => c.Products.Any(p => p.IsActive && p.Stock > 0));
 
-        var inStock = products.Count(p => p.Stock > 0);
-
-        return new List<FacetGroup>
+        var groups = new List<FacetGroup>();
+        if (genreBuckets.Count > 0) groups.Add(new FacetGroup("genre", "Жанр", genreBuckets));
+        if (artistBuckets.Count > 0) groups.Add(new FacetGroup("artist", "Виконавці", artistBuckets));
+        if (formatBuckets.Count > 0) groups.Add(new FacetGroup("format", "Формат", formatBuckets));
+        groups.Add(new FacetGroup("stock", "Наявність", new List<FacetBucket>
         {
-            new("genre", "Жанр", genreBuckets),
-            new("format", "Формат", formatBuckets),
-            new("stock", "Наявність", new List<FacetBucket>
-            {
-                new("stock", "Тільки в наявності", inStock, filters.InStockOnly)
-            })
-        };
+            new("stock", "Тільки в наявності", inStock, filters.InStockOnly)
+        }));
+        return groups;
     }
 
     // === Did-you-mean (fuzzy) ===
@@ -476,20 +434,22 @@ public class SearchService : ISearchService
         var trackIds = raw.Where(x => x.Type == "track").Select(x => x.Id).ToList();
         var artistIds = raw.Where(x => x.Type == "artist").Select(x => x.Id).ToList();
 
-        var albumCovers = albumIds.Count == 0
+        // A track suggestion resolves to its album (the purchasable unit), so we
+        // re-key it onto the album for both cover and navigation.
+        var trackAlbumId = trackIds.Count == 0
+            ? new Dictionary<int, int>()
+            : db.Tracks.AsNoTracking()
+                .Where(t => trackIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.AlbumId })
+                .ToDictionary(x => x.Id, x => x.AlbumId);
+
+        var coverAlbumIds = albumIds.Concat(trackAlbumId.Values).Distinct().ToList();
+        var albumCovers = coverAlbumIds.Count == 0
             ? new Dictionary<int, string?>()
             : db.Albums.AsNoTracking()
-                .Where(a => albumIds.Contains(a.Id))
+                .Where(a => coverAlbumIds.Contains(a.Id))
                 .Select(a => new { a.Id, a.CoverPath })
                 .ToDictionary(a => a.Id, a => a.CoverPath);
-
-        var trackCovers = trackIds.Count == 0
-            ? new Dictionary<int, string?>()
-            : (from t in db.Tracks.AsNoTracking()
-               join a in db.Albums.AsNoTracking() on t.AlbumId equals a.Id
-               where trackIds.Contains(t.Id)
-               select new { t.Id, a.CoverPath })
-              .ToDictionary(x => x.Id, x => x.CoverPath);
 
         var artistPhotos = artistIds.Count == 0
             ? new Dictionary<int, string?>()
@@ -501,14 +461,18 @@ public class SearchService : ISearchService
         var results = new List<AutocompleteHit>(raw.Count);
         foreach (var (type, id, title) in raw)
         {
-            string? imagePath = type switch
+            switch (type)
             {
-                "album" => albumCovers.TryGetValue(id, out var c) ? c : null,
-                "track" => trackCovers.TryGetValue(id, out var c) ? c : null,
-                "artist" => artistPhotos.TryGetValue(id, out var p) ? p : null,
-                _ => null
-            };
-            results.Add(new AutocompleteHit(title, type, id, imagePath));
+                case "album":
+                    results.Add(new AutocompleteHit(title, "album", id, albumCovers.GetValueOrDefault(id)));
+                    break;
+                case "track" when trackAlbumId.TryGetValue(id, out var albumId):
+                    results.Add(new AutocompleteHit(title, "album", albumId, albumCovers.GetValueOrDefault(albumId)));
+                    break;
+                case "artist":
+                    results.Add(new AutocompleteHit(title, "artist", id, artistPhotos.GetValueOrDefault(id)));
+                    break;
+            }
         }
         return results;
     }

@@ -7,122 +7,358 @@
 
     <StackPanel Margin="32,24,32,32" Spacing="20">
 
-        <TextBlock Classes="h1"
-                   Text="{Binding ItemCount, StringFormat='Кошик ({0})'}"/>
+        <!-- ======================= STAGE 1: CART ======================= -->
+        <StackPanel Spacing="20" IsVisible="{Binding ShowCart}">
 
-        <!-- Flash message -->
-        <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusS}" Padding="12,8"
-                IsVisible="{Binding FlashMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding FlashMessage}" Classes="muted"/>
-        </Border>
+            <TextBlock Classes="h1"
+                       Text="{Binding ItemCount, StringFormat='Кошик ({0})'}"/>
 
-        <!-- Guest banner -->
-        <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusM}" Padding="14"
-                IsVisible="{Binding IsGuest}">
-            <TextBlock TextWrapping="Wrap" Classes="muted">
-                <Run Text="Ви переглядаєте кошик як гість. "/>
-                <Run Text="Для оформлення замовлення необхідно увійти в обліковий запис." FontWeight="SemiBold" Foreground="{StaticResource FgPrimaryBrush}"/>
-            </TextBlock>
-        </Border>
+            <!-- Flash message -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusS}" Padding="12,8"
+                    IsVisible="{Binding FlashMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding FlashMessage}" Classes="muted"/>
+            </Border>
 
-        <!-- Empty state -->
-        <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusL}"
-                Padding="50" IsVisible="{Binding IsEmpty}">
-            <StackPanel Spacing="10" HorizontalAlignment="Center">
-                <Path Classes="icon xl" Data="{StaticResource IconCart}"
-                      HorizontalAlignment="Center" Opacity="0.6"/>
-                <TextBlock Text="У кошику поки що порожньо" Classes="h3"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Знайдіть щось у каталозі і повертайтесь сюди"
-                           Classes="muted" HorizontalAlignment="Center"/>
-            </StackPanel>
-        </Border>
+            <!-- Guest banner -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="14"
+                    IsVisible="{Binding IsGuest}">
+                <TextBlock TextWrapping="Wrap" Classes="muted">
+                    <Run Text="Ви переглядаєте кошик як гість. "/>
+                    <Run Text="Для оформлення замовлення необхідно увійти в обліковий запис." FontWeight="SemiBold" Foreground="{StaticResource FgPrimaryBrush}"/>
+                </TextBlock>
+            </Border>
 
-        <!-- Items list -->
-        <ItemsControl ItemsSource="{Binding Items}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="m:CartItem">
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}"
-                            Padding="18" Margin="0,0,0,14">
-                        <Grid ColumnDefinitions="76,*,Auto,Auto,Auto">
-                            <Border Grid.Column="0" Width="60" Height="60"
-                                    CornerRadius="{StaticResource RadiusS}"
-                                    Background="{Binding Product.Album, Converter={StaticResource AlbumToGradient}}"
-                                    ClipToBounds="True">
-                                <Grid>
-                                    <TextBlock Text="{Binding Product.Album.Title, Converter={StaticResource FirstChar}}"
-                                               FontSize="28" FontWeight="Bold" Opacity="0.45"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource FgPrimaryBrush}"
-                                               IsVisible="{Binding Product.Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                    <Image Source="{Binding Product.Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
-                                           Stretch="UniformToFill"/>
-                                </Grid>
-                            </Border>
-
-                            <StackPanel Grid.Column="1" Margin="18,0" VerticalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
-                                <TextBlock Classes="muted"
-                                           Text="{Binding Product.Album.Artist.Name}"/>
-                                <Border Classes="chip" HorizontalAlignment="Left">
-                                    <TextBlock Text="{Binding Product.FormatBadge}" FontSize="14"/>
-                                </Border>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                        Spacing="10" VerticalAlignment="Center">
-                                <Button Classes="icon" Width="36" Height="36"
-                                        Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).DecreaseCommand}"
-                                        CommandParameter="{Binding}">
-                                    <Path Classes="icon sm" Data="{StaticResource IconMinus}"/>
-                                </Button>
-                                <TextBlock Text="{Binding Quantity}" MinWidth="26"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Button Classes="icon" Width="36" Height="36"
-                                        Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).IncreaseCommand}"
-                                        CommandParameter="{Binding}">
-                                    <Path Classes="icon sm" Data="{StaticResource IconPlus}"/>
-                                </Button>
-                            </StackPanel>
-
-                            <TextBlock Grid.Column="3"
-                                       Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
-                                       FontWeight="SemiBold" MinWidth="100"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center"
-                                       Margin="20,0"/>
-
-                            <Button Grid.Column="4" Classes="icon" Width="40" Height="40"
-                                    Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).RemoveCommand}"
-                                    CommandParameter="{Binding}">
-                                <Path Classes="icon" Data="{StaticResource IconClose}"/>
-                            </Button>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <!-- Total + checkout -->
-        <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusM}"
-                Padding="26">
-            <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Spacing="6">
-                    <TextBlock Classes="muted" Text="Разом до сплати"/>
-                    <TextBlock Text="{Binding Total, StringFormat='{}{0:0} ₴'}"
-                               FontSize="36" FontWeight="Bold"
-                               Foreground="{StaticResource AccentBrush}"/>
+            <!-- Empty state -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusL}"
+                    Padding="40" IsVisible="{Binding IsEmpty}">
+                <StackPanel Spacing="10" HorizontalAlignment="Center">
+                    <Path Classes="icon xl" Data="{StaticResource IconCart}"
+                          HorizontalAlignment="Center" Opacity="0.6"/>
+                    <TextBlock Text="У кошику поки що порожньо" Classes="h3"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Знайдіть щось у каталозі і повертайтесь сюди"
+                               Classes="muted" HorizontalAlignment="Center"/>
                 </StackPanel>
-                <Button Grid.Column="1" Classes="primary"
-                        Content="Оформити замовлення"
-                        Command="{Binding CheckoutCommand}"
-                        VerticalAlignment="Center" FontSize="18"/>
-            </Grid>
+            </Border>
+
+            <!-- Items list -->
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="m:CartItem">
+                        <Border Background="{StaticResource BgElevatedBrush}"
+                                CornerRadius="{StaticResource RadiusM}"
+                                Padding="14" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="86,*,Auto,Auto,Auto">
+                                <Border Grid.Column="0" Width="72" Height="72"
+                                        CornerRadius="{StaticResource RadiusS}"
+                                        Background="{Binding Product.Album, Converter={StaticResource AlbumToGradient}}"
+                                        ClipToBounds="True">
+                                    <Grid>
+                                        <TextBlock Text="{Binding Product.Album.Title, Converter={StaticResource FirstChar}}"
+                                                   FontSize="30" FontWeight="Bold" Opacity="0.45"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource FgPrimaryBrush}"
+                                                   IsVisible="{Binding Product.Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                        <Image Source="{Binding Product.Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                               Stretch="UniformToFill"/>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="3">
+                                    <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
+                                    <TextBlock Classes="muted"
+                                               Text="{Binding Product.Album.Artist.Name}"/>
+                                    <Border Classes="chip" HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding Product.FormatBadge}" FontSize="11"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                            Spacing="8" VerticalAlignment="Center">
+                                    <Button Classes="icon" Width="28" Height="28"
+                                            Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).DecreaseCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Path Classes="icon sm" Data="{StaticResource IconMinus}"/>
+                                    </Button>
+                                    <TextBlock Text="{Binding Quantity}" MinWidth="20"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Button Classes="icon" Width="28" Height="28"
+                                            Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).IncreaseCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Path Classes="icon sm" Data="{StaticResource IconPlus}"/>
+                                    </Button>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
+                                           FontWeight="SemiBold" MinWidth="80"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           Margin="16,0"/>
+
+                                <Button Grid.Column="4" Classes="icon" Width="32" Height="32"
+                                        Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).RemoveCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Path Classes="icon" Data="{StaticResource IconClose}"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Total + checkout (pointless on an empty cart, so hidden there) -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}"
+                    Padding="20" IsVisible="{Binding !IsEmpty}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Classes="muted" Text="Разом до сплати"/>
+                        <TextBlock Text="{Binding Total, StringFormat='{}{0:0} ₴'}"
+                                   FontSize="28" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="primary"
+                            Content="Оформити замовлення"
+                            Command="{Binding BeginCheckoutCommand}"
+                            VerticalAlignment="Center" FontSize="14"/>
+                </Grid>
+            </Border>
+
+            <!-- «Купіть також» — same-artist / same-genre albums, bestsellers as
+                 fallback; doubles as a starting point when the cart is empty. -->
+            <StackPanel Spacing="14" IsVisible="{Binding HasSuggestions}">
+                <TextBlock Classes="h2" Text="{Binding SuggestionsTitle}"/>
+                <ItemsControl ItemsSource="{Binding Suggestions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="14"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Product">
+                            <Button Classes="album-card" Width="180"
+                                    VerticalAlignment="Top"
+                                    Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).OpenSuggestionCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="8">
+                                    <Grid>
+                                        <Border Width="152" Height="152"
+                                                CornerRadius="{StaticResource RadiusM}"
+                                                Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
+                                                ClipToBounds="True">
+                                            <Grid>
+                                                <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
+                                                           FontSize="56" FontWeight="Bold" Opacity="0.45"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource FgPrimaryBrush}"
+                                                           IsVisible="{Binding Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                <Image Source="{Binding Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                                       Stretch="UniformToFill"/>
+                                            </Grid>
+                                        </Border>
+                                        <Button Classes="play-circle"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Bottom"
+                                                Margin="0,0,6,6"
+                                                Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).AddSuggestionCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Додати в кошик">
+                                            <Path Data="{StaticResource IconPlus}"
+                                                  Stroke="{StaticResource OnAccentBrush}" Fill="Transparent"
+                                                  StrokeThickness="2.5"
+                                                  StrokeLineCap="Round" StrokeJoin="Round"
+                                                  Width="18" Height="18" Stretch="Uniform"/>
+                                        </Button>
+                                    </Grid>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Album.Title}"
+                                                   FontWeight="SemiBold" FontSize="14"
+                                                   Foreground="{StaticResource FgPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Classes="muted"
+                                                   Text="{Binding Album.Artist.Name}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Border Classes="chip" Padding="6,2">
+                                            <TextBlock Text="{Binding FormatBadge}" FontSize="11"
+                                                       Foreground="{StaticResource FgSecondaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ==================== STAGE 2: CHECKOUT ====================== -->
+        <StackPanel Spacing="20" IsVisible="{Binding ShowCheckout}" MaxWidth="720"
+                    HorizontalAlignment="Left">
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Classes="icon" Width="36" Height="36"
+                        Command="{Binding CancelCheckoutCommand}"
+                        ToolTip.Tip="Назад до кошика">
+                    <Path Classes="icon" Data="{StaticResource IconChevronLeft}"/>
+                </Button>
+                <TextBlock Classes="h1" Text="Оформлення замовлення"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Delivery details -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock Classes="h3" Text="Отримання замовлення"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding ContactEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Classes="muted" Text="Контакт:"/>
+                        <TextBlock Text="{Binding ContactEmail}" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="18">
+                        <RadioButton Content="Самовивіз з магазину"
+                                     IsChecked="{Binding IsPickup}"
+                                     GroupName="DeliveryMethod"/>
+                        <RadioButton Content="Доставка Новою Поштою"
+                                     IsChecked="{Binding IsNovaPoshta}"
+                                     GroupName="DeliveryMethod"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding IsPickup}">
+                        <TextBlock Classes="muted" Text="Магазин *"/>
+                        <ComboBox ItemsSource="{Binding PickupLocations}"
+                                  SelectedItem="{Binding SelectedPickupLocation}"
+                                  HorizontalAlignment="Stretch"/>
+                        <TextBlock Classes="muted" FontSize="12"
+                                   Text="Безкоштовно · замовлення чекає на вас 3 дні"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="10" IsVisible="{Binding IsNovaPoshta}">
+                        <Grid ColumnDefinitions="*,12,*">
+                            <StackPanel Grid.Column="0" Spacing="6">
+                                <TextBlock Classes="muted" Text="Місто *"/>
+                                <TextBox Text="{Binding NovaPoshtaCity}"
+                                         PlaceholderText="Київ"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <TextBlock Classes="muted" Text="Відділення / поштомат *"/>
+                                <TextBox Text="{Binding NovaPoshtaBranch}"
+                                         PlaceholderText="№ відділення, напр. 25"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="muted" FontSize="12"
+                                   Text="Доставка за тарифами Нової Пошти, оплата при отриманні"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="muted" Text="Коментар до замовлення"/>
+                        <TextBox Text="{Binding OrderComment}"
+                                 PlaceholderText="Необов'язково"
+                                 AcceptsReturn="True" MinHeight="64"
+                                 TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding CheckoutError}"
+                               Foreground="{StaticResource AccentBrush}"
+                               IsVisible="{Binding CheckoutError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Order summary -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="h3" Text="Ваше замовлення"/>
+
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="m:CartItem">
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,3">
+                                    <TextBlock Grid.Column="0" TextTrimming="CharacterEllipsis">
+                                        <Run Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
+                                        <Run Text="·" Foreground="{StaticResource FgSecondaryBrush}"/>
+                                        <Run Text="{Binding Product.Album.Artist.Name}" Foreground="{StaticResource FgSecondaryBrush}"/>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}"
+                                               Classes="muted" Margin="10,0"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Quantity, StringFormat='× {0}'}"
+                                               Classes="muted" Margin="0,0,10,0"/>
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
+                                               MinWidth="70" TextAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Height="1" Background="{StaticResource DividerSoftBrush}"/>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="muted" Text="Разом до сплати"/>
+                            <TextBlock Text="{Binding Total, StringFormat='{}{0:0} ₴'}"
+                                       FontSize="24" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="primary"
+                                Content="Підтвердити замовлення"
+                                Command="{Binding ConfirmCheckoutCommand}"
+                                VerticalAlignment="Center" FontSize="14"/>
+                    </Grid>
+
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="Оплата при отриманні. Менеджер зв'яжеться з вами для підтвердження."/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ===================== STAGE 3: SUCCESS ====================== -->
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusL}" Padding="40"
+                IsVisible="{Binding ShowSuccess}" MaxWidth="560"
+                HorizontalAlignment="Left">
+            <StackPanel Spacing="14" HorizontalAlignment="Center">
+                <Border Width="64" Height="64" CornerRadius="32"
+                        Background="{StaticResource AccentBrush}"
+                        HorizontalAlignment="Center">
+                    <Path Data="{StaticResource IconCheck}"
+                          Stroke="{StaticResource OnAccentBrush}" Fill="Transparent"
+                          StrokeThickness="2.5"
+                          StrokeLineCap="Round" StrokeJoin="Round"
+                          Width="30" Height="30" Stretch="Uniform"/>
+                </Border>
+
+                <TextBlock Classes="h2" HorizontalAlignment="Center"
+                           Text="{Binding CompletedOrder.Id, StringFormat='Замовлення №{0} оформлено'}"/>
+                <TextBlock Classes="muted" HorizontalAlignment="Center"
+                           Text="{Binding CompletedOrder.TotalAmount, StringFormat='Сума: {0:0} ₴ · Оплата при отриманні'}"/>
+                <TextBlock Classes="muted" HorizontalAlignment="Center"
+                           TextWrapping="Wrap" TextAlignment="Center"
+                           Text="{Binding CompletedOrder.ShippingAddress}"
+                           IsVisible="{Binding CompletedOrder.ShippingAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="10"
+                            HorizontalAlignment="Center" Margin="0,8,0,0">
+                    <Button Classes="primary" Content="До замовлень"
+                            Command="{Binding GoToOrdersCommand}"/>
+                    <Button Classes="ghost" Content="Продовжити покупки"
+                            Command="{Binding ContinueShoppingCommand}"/>
+                </StackPanel>
+            </StackPanel>
         </Border>
     </StackPanel>
 </UserControl>

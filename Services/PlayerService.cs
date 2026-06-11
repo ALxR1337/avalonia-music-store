@@ -21,6 +21,7 @@ public class PlayerService : IPlayerService, IDisposable
 
     private int _currentIndex = -1;
     private bool _isSampleMode;
+    private long _sampleStartMs;
     private long _sampleEndMs;
     private double _volume = 0.7;
     private bool _disposed;
@@ -62,7 +63,21 @@ public class PlayerService : IPlayerService, IDisposable
     public Track? CurrentTrack { get; private set; }
     public Album? CurrentAlbum { get; private set; }
     public bool IsPlaying { get; private set; }
-    public TimeSpan Position => TimeSpan.FromMilliseconds(_mp.Time < 0 ? 0 : _mp.Time);
+    public bool IsSampleMode => _isSampleMode;
+    public TimeSpan Position
+    {
+        get
+        {
+            var ms = _mp.Time < 0 ? 0 : _mp.Time;
+            // A sample plays a 30s window starting at _sampleStartMs into the clip.
+            // Report the position relative to that window so it counts 0:00 → 0:30
+            // and stays in step with Duration (the 30s sample length) instead of
+            // showing the absolute clip time (e.g. 0:31 over a "0:30" sample).
+            if (_isSampleMode)
+                ms = Math.Clamp(ms - _sampleStartMs, 0, SampleLengthSeconds * 1000L);
+            return TimeSpan.FromMilliseconds(ms);
+        }
+    }
     public TimeSpan Duration
     {
         get
@@ -132,7 +147,11 @@ public class PlayerService : IPlayerService, IDisposable
 
     public void PlaySample(Track track)
     {
-        CurrentAlbum = null;
+        // Resolve the owning album so the mini-player can show its cover art.
+        // This stays a single-track preview: Next/Previous are no-ops in sample
+        // mode (guarded below), so surfacing the album here can't be used to skip
+        // into full, unpurchased tracks.
+        CurrentAlbum = _catalog?.GetAlbum(track.AlbumId);
         StartTrack(track, sampleMode: true);
     }
 
@@ -165,6 +184,7 @@ public class PlayerService : IPlayerService, IDisposable
         {
             // No real audio — surface the open so UI updates, but don't try to play.
             IsPlaying = false;
+            _sampleStartMs = 0;
             _sampleEndMs = 0;
             MediaOpened?.Invoke(this, EventArgs.Empty);
             PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
@@ -176,13 +196,14 @@ public class PlayerService : IPlayerService, IDisposable
 
         if (sampleMode)
         {
-            var startMs = (long)Math.Max(0, track.SampleStartSeconds) * 1000L;
-            _sampleEndMs = startMs + SampleLengthSeconds * 1000L;
+            _sampleStartMs = (long)Math.Max(0, track.SampleStartSeconds) * 1000L;
+            _sampleEndMs = _sampleStartMs + SampleLengthSeconds * 1000L;
             _mp.Play();
-            if (startMs > 0) _mp.Time = startMs;
+            if (_sampleStartMs > 0) _mp.Time = _sampleStartMs;
         }
         else
         {
+            _sampleStartMs = 0;
             _sampleEndMs = 0;
             _mp.Play();
         }
@@ -206,6 +227,9 @@ public class PlayerService : IPlayerService, IDisposable
 
     public void Next()
     {
+        // A sample is a single-track preview, not an album queue — skipping would
+        // otherwise start a full, unpurchased track via StartTrack(sampleMode:false).
+        if (_isSampleMode) return;
         if (CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0) return;
         _currentIndex = (_currentIndex + 1) % CurrentAlbum.Tracks.Count;
         StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: false);
@@ -213,6 +237,7 @@ public class PlayerService : IPlayerService, IDisposable
 
     public void Previous()
     {
+        if (_isSampleMode) return;
         if (CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0) return;
         _currentIndex = (_currentIndex - 1 + CurrentAlbum.Tracks.Count) % CurrentAlbum.Tracks.Count;
         StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: false);
@@ -221,7 +246,19 @@ public class PlayerService : IPlayerService, IDisposable
     public void Seek(TimeSpan position)
     {
         if (CurrentTrack is null) return;
-        var ms = (long)Math.Clamp(position.TotalMilliseconds, 0, Duration.TotalMilliseconds);
+        long ms;
+        if (_isSampleMode)
+        {
+            // Incoming position is sample-relative (0 → 30s); map it back onto the
+            // absolute clip window [_sampleStartMs, _sampleEndMs] so scrubbing stays
+            // inside the preview instead of jumping to the start of the file.
+            var rel = Math.Clamp(position.TotalMilliseconds, 0, SampleLengthSeconds * 1000.0);
+            ms = _sampleStartMs + (long)rel;
+        }
+        else
+        {
+            ms = (long)Math.Clamp(position.TotalMilliseconds, 0, Duration.TotalMilliseconds);
+        }
         _mp.Time = ms;
         OnUi(() => PositionChanged?.Invoke(this, EventArgs.Empty));
     }

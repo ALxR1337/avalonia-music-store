@@ -3,24 +3,26 @@
              xmlns:vm="using:MusicApp.ViewModels"
              xmlns:m="using:MusicApp.Models"
              xmlns:s="using:MusicApp.Services.Search"
+             xmlns:ctrl="using:MusicApp.Controls"
+             xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="MusicApp.Views.SearchResultsView"
              x:DataType="vm:SearchResultsViewModel">
 
-    <Grid ColumnDefinitions="350,*" Margin="32,24,32,32">
+    <Grid ColumnDefinitions="280,*" Margin="32,24,32,32">
 
         <!-- ============ Facet sidebar ============ -->
         <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,30,0">
+                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,24,0">
             <StackPanel Spacing="22">
                 <TextBlock Classes="h3" Text="Фільтри"/>
 
                 <!-- Dynamic facets (genre/format/stock with live counts) -->
                 <ItemsControl ItemsSource="{Binding Facets}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="s:FacetGroup">
+                        <DataTemplate DataType="vm:FacetGroupViewModel">
                             <StackPanel Spacing="6" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding Title}" Classes="muted"/>
-                                <ItemsControl ItemsSource="{Binding Buckets}">
+                                <ItemsControl ItemsSource="{Binding VisibleBuckets}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="s:FacetBucket">
                                             <Button Classes="ghost" Padding="6,3"
@@ -38,6 +40,27 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+
+                                <!-- Long lists (artists) collapse to the first
+                                     entries; the rest hide behind this toggle. -->
+                                <Button Classes="link-inline" Margin="6,2,0,0"
+                                        Content="{Binding ToggleLabel}"
+                                        Command="{Binding ToggleExpandCommand}"
+                                        IsVisible="{Binding HasMore}"/>
+
+                                <!-- Any/All combiner sits right under the genre list and
+                                     only appears once 2+ genres are picked. Unchecked =
+                                     будь-який обраний жанр (OR); checked = усі разом (AND). -->
+                                <CheckBox Margin="2,4,0,0"
+                                          IsChecked="{Binding $parent[UserControl].((vm:SearchResultsViewModel)DataContext).GenresMatchAll}">
+                                    <TextBlock Text="Лише з усіма обраними жанрами" TextWrapping="Wrap"/>
+                                    <CheckBox.IsVisible>
+                                        <MultiBinding Converter="{x:Static conv:BoolConverters.And}">
+                                            <Binding Path="IsGenre"/>
+                                            <Binding Path="$parent[UserControl].((vm:SearchResultsViewModel)DataContext).CanCombineGenres"/>
+                                        </MultiBinding>
+                                    </CheckBox.IsVisible>
+                                </CheckBox>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -78,7 +101,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                         <Path Data="{StaticResource IconSave}" Fill="Transparent" Stroke="Black"
                               StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
-                              Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center"/>
+                              Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
                         <TextBlock Text="Зберегти запит" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
@@ -91,12 +114,12 @@
             <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Classes="muted"
-                           Text="{Binding TotalCount, StringFormat='Знайдено {0} результатів'}"/>
+                           Text="{Binding TotalCount, StringFormat='Знайдено альбомів: {0}'}"/>
                 <TextBlock Classes="h1" Text="{Binding HeaderLabel}"/>
             </StackPanel>
 
             <!-- Did-you-mean hint -->
-            <Border CornerRadius="{StaticResource RadiusS}" Padding="16,10"
+            <Border CornerRadius="{StaticResource RadiusS}" Padding="12,8"
                     Background="{StaticResource BgElevatedBrush}"
                     IsVisible="{Binding HasDidYouMean}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -109,34 +132,6 @@
                     </Button>
                 </StackPanel>
             </Border>
-
-            <!-- Chip-tabs -->
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Classes="chip-tab" Classes.active="{Binding IsTabAll}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="All">
-                    <TextBlock Text="{Binding TotalCount, StringFormat='Усі ({0})'}"/>
-                </Button>
-                <Button Classes="chip-tab" Classes.active="{Binding IsTabAlbums}"
-                        IsEnabled="{Binding AlbumCount}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="Albums">
-                    <TextBlock Text="{Binding AlbumCount, StringFormat='Альбоми ({0})'}"/>
-                </Button>
-                <Button Classes="chip-tab" Classes.active="{Binding IsTabArtists}"
-                        IsEnabled="{Binding ArtistCount}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="Artists">
-                    <TextBlock Text="{Binding ArtistCount, StringFormat='Виконавці ({0})'}"/>
-                </Button>
-                <Button Classes="chip-tab" Classes.active="{Binding IsTabTracks}"
-                        IsEnabled="{Binding TrackCount}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="Tracks">
-                    <TextBlock Text="{Binding TrackCount, StringFormat='Треки ({0})'}"/>
-                </Button>
-                <Button Classes="chip-tab" Classes.active="{Binding IsTabReviews}"
-                        IsEnabled="{Binding ReviewCount}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="Reviews">
-                    <TextBlock Text="{Binding ReviewCount, StringFormat='Відгуки ({0})'}"/>
-                </Button>
-            </StackPanel>
 
             <!-- Active filter chips (click to remove) -->
             <ItemsControl ItemsSource="{Binding ActiveFilterChips}"
@@ -163,17 +158,24 @@
 
             <!-- Top result -->
             <Border Background="{StaticResource BgElevatedBrush}"
-                    CornerRadius="{StaticResource RadiusM}" Padding="20"
+                    CornerRadius="{StaticResource RadiusM}" Padding="16"
                     IsVisible="{Binding HasTopResult}">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Border Grid.Column="0" Width="70" Height="70"
+                    <!-- The album's own cover sells the hit better than a
+                         generic star; the star stays as a no-cover fallback. -->
+                    <Border Grid.Column="0" Width="56" Height="56"
                             CornerRadius="{StaticResource RadiusS}"
-                            Background="{StaticResource AccentBrush}">
-                        <Path Data="{StaticResource IconStar}" Fill="Black" Stroke="Transparent"
-                              Width="36" Height="36" Stretch="Uniform"
-                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            Background="{StaticResource AccentBrush}"
+                            ClipToBounds="True">
+                        <Grid>
+                            <Path Data="{StaticResource IconStar}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                                  Width="28" Height="28" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image Source="{Binding TopResult.Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                   Stretch="UniformToFill"/>
+                        </Grid>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="20,0" Spacing="6" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Margin="16,0" Spacing="4" VerticalAlignment="Center">
                         <TextBlock Classes="tiny" Text="ТОП-РЕЗУЛЬТАТ"/>
                         <TextBlock Text="{Binding TopResultLabel}" Classes="h3"/>
                         <TextBlock Text="{Binding TopResultSubLabel}" Classes="muted"
@@ -190,30 +192,30 @@
                        Text="Нічого не знайдено. Спробуйте інші слова або скиньте фільтри."
                        IsVisible="{Binding HasNoResults}"/>
 
-            <!-- Albums -->
-            <StackPanel Spacing="10" IsVisible="{Binding ShowAlbums}">
-                <TextBlock Classes="h3" Text="Альбоми" IsVisible="{Binding Albums.Count}"/>
-                <ItemsControl ItemsSource="{Binding Albums}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="s:ScoredAlbum">
-                            <Border Classes="card" Width="226" Margin="0,0,16,16">
-                                <Button Classes="ghost" Padding="0"
-                                        HorizontalContentAlignment="Stretch"
-                                        Command="{Binding $parent[ItemsControl].((vm:SearchResultsViewModel)DataContext).OpenAlbumProductCommand}"
-                                        CommandParameter="{Binding}">
-                                    <StackPanel Spacing="10">
+            <!-- Albums (the only result type — tracks/artists fold into the album) -->
+            <ItemsControl ItemsSource="{Binding Albums}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <!-- Stretches cards so each row fills the column —
+                             a fixed-width WrapPanel left a gutter on the right. -->
+                        <ctrl:UniformWrapPanel MinItemWidth="180" ColumnSpacing="12" RowSpacing="12"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="s:AlbumHit">
+                        <Border Classes="card">
+                            <Button Classes="ghost" Padding="0"
+                                    HorizontalContentAlignment="Stretch"
+                                    Command="{Binding $parent[ItemsControl].((vm:SearchResultsViewModel)DataContext).OpenAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="8">
+                                    <ctrl:Square>
                                         <Border CornerRadius="{StaticResource RadiusM}"
-                                                Width="190" Height="190"
                                                 Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
                                                 ClipToBounds="True">
                                             <Grid>
                                                 <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
-                                                           FontSize="70" FontWeight="Bold" Opacity="0.45"
+                                                           FontSize="56" FontWeight="Bold" Opacity="0.45"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
                                                            Foreground="{StaticResource FgPrimaryBrush}"
@@ -222,91 +224,26 @@
                                                        Stretch="UniformToFill"/>
                                             </Grid>
                                         </Border>
-                                        <TextBlock Text="{Binding Album.Title}"
-                                                   FontWeight="SemiBold" FontSize="16"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Album.Artist.Name}"
-                                                   Classes="muted"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Score, StringFormat='релевантність {0:0.000}'}"
-                                                   Foreground="{StaticResource FgTertiaryBrush}"
-                                                   FontSize="14"/>
-                                    </StackPanel>
-                                </Button>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <!-- Artists -->
-            <StackPanel Spacing="10" IsVisible="{Binding ShowArtists}">
-                <TextBlock Classes="h3" Text="Виконавці" IsVisible="{Binding Artists.Count}"/>
-                <ItemsControl ItemsSource="{Binding Artists}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="s:ScoredArtist">
-                            <Border Padding="14,8" Margin="0,0,0,6" CornerRadius="{StaticResource RadiusS}">
-                                <StackPanel Orientation="Horizontal" Spacing="14">
-                                    <Border Width="46" Height="46" CornerRadius="23"
-                                            Background="{StaticResource AccentBrush}"
-                                            HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Artist.Name}" FontWeight="SemiBold"
-                                               VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Artist.Country}"
-                                               Classes="muted" VerticalAlignment="Center"/>
+                                    </ctrl:Square>
+                                    <TextBlock Text="{Binding Album.Title}"
+                                               FontWeight="SemiBold" FontSize="13"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Album.Artist.Name}"
+                                               Classes="muted"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               FontWeight="SemiBold" FontSize="13"/>
+                                    <TextBlock Text="{Binding FirstMatchedTrack.Title, StringFormat='↳ у треку «{0}»'}"
+                                               IsVisible="{Binding HasMatchedTracks}"
+                                               Foreground="{StaticResource FgTertiaryBrush}"
+                                               FontSize="11" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <!-- Tracks -->
-            <StackPanel Spacing="10" IsVisible="{Binding ShowTracks}">
-                <TextBlock Classes="h3" Text="Треки" IsVisible="{Binding Tracks.Count}"/>
-                <ItemsControl ItemsSource="{Binding Tracks}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="s:ScoredTrack">
-                            <Border Padding="14,10" CornerRadius="{StaticResource RadiusS}">
-                                <Grid ColumnDefinitions="46,*,Auto">
-                                    <Button Grid.Column="0" Classes="icon" Width="36" Height="36"
-                                            Command="{Binding $parent[ItemsControl].((vm:SearchResultsViewModel)DataContext).PlayTrackCommand}"
-                                            CommandParameter="{Binding}">
-                                        <Path Classes="icon sm filled primary"
-                                              Data="{StaticResource IconPlay}"/>
-                                    </Button>
-                                    <TextBlock Grid.Column="1" Text="{Binding Track.Title}"
-                                               VerticalAlignment="Center" Margin="10,0"/>
-                                    <TextBlock Grid.Column="2" Classes="muted"
-                                               Text="{Binding Track.DurationDisplay}"
-                                               VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <!-- Reviews -->
-            <StackPanel Spacing="10" IsVisible="{Binding ShowReviews}">
-                <TextBlock Classes="h3" Text="Відгуки" IsVisible="{Binding Reviews.Count}"/>
-                <ItemsControl ItemsSource="{Binding Reviews}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="s:ScoredReview">
-                            <Border Padding="16" Margin="0,0,0,8"
-                                    Background="{StaticResource BgElevatedBrush}"
-                                    CornerRadius="{StaticResource RadiusS}">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="{Binding Review.UserDisplayName}"
-                                               FontWeight="SemiBold" FontSize="16"/>
-                                    <TextBlock Text="{Binding Review.Text}"
-                                               TextWrapping="Wrap" Classes="muted"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+                            </Button>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </Grid>
 </UserControl>

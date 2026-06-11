@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
 using MusicApp.Models;
 
 namespace MusicApp.Services.Search;
 
-public enum SearchTab { All, Albums, Artists, Tracks, Reviews }
-
+// The store sells albums (as Vinyl/CD products), so search is album-centric:
+// every match — by album title, by an album's track/lyrics, or by its artist —
+// resolves to one or more albums. Genre and artist are multi-select facets
+// (OR within a facet); the remaining numeric/bool constraints AND together.
 public sealed record SearchFilters(
     int? YearFrom = null,
     int? YearTo = null,
@@ -12,18 +15,53 @@ public sealed record SearchFilters(
     decimal? PriceTo = null,
     double? MinRating = null,
     ProductFormat? Format = null,
-    string? Genre = null,
+    IReadOnlyList<string>? Genres = null,
+    IReadOnlyList<string>? Artists = null,
     bool InStockOnly = false,
-    SearchTab Tab = SearchTab.All);
+    // false → album matches ANY selected genre (union); true → must carry ALL of them.
+    bool GenresMatchAll = false)
+{
+    public IReadOnlyList<string> Genres { get; init; } = Genres ?? Array.Empty<string>();
+    public IReadOnlyList<string> Artists { get; init; } = Artists ?? Array.Empty<string>();
+}
 
 public sealed record FacetBucket(string Field, string Label, int Count, bool IsActive = false);
 
-public sealed record FacetGroup(string Field, string Title, IReadOnlyList<FacetBucket> Buckets);
+public sealed record FacetGroup(string Field, string Title, IReadOnlyList<FacetBucket> Buckets)
+{
+    public bool IsGenre => Field == "genre";
+}
 
-public sealed record ScoredAlbum(Album Album, double Score, double Bm25, double Popularity);
-public sealed record ScoredTrack(Track Track, double Score, double Bm25);
-public sealed record ScoredArtist(Artist Artist, double Score, double Bm25);
-public sealed record ScoredReview(Review Review, double Score, double Bm25);
+// Why an album surfaced. Combined with OR across all the hits that fold into the
+// same album, so a single album can match on several axes at once.
+[Flags]
+public enum AlbumMatchKind
+{
+    None = 0,
+    Title = 1,
+    Description = 2,
+    Artist = 4,
+    Track = 8,
+    Lyrics = 16,
+    Browse = 32,
+}
+
+public sealed record MatchedTrack(Track Track, AlbumMatchKind Kind);
+
+public sealed record AlbumHit(
+    Album Album,
+    Product? PrimaryProduct,
+    double Score,
+    AlbumMatchKind Match,
+    IReadOnlyList<MatchedTrack> MatchedTracks)
+{
+    public bool HasMatchedTracks => MatchedTracks.Count > 0;
+
+    // First track the query hit, for the "↳ знайдено в треку «…»" annotation.
+    public Track? FirstMatchedTrack => MatchedTracks.Count > 0 ? MatchedTracks[0].Track : null;
+
+    public decimal? Price => PrimaryProduct?.Price;
+}
 
 public sealed class SearchResults
 {
@@ -31,16 +69,12 @@ public sealed class SearchResults
     public string RawQuery { get; init; } = string.Empty;
     public SearchFilters Filters { get; init; } = new();
 
-    public IReadOnlyList<ScoredAlbum> Albums { get; init; } = System.Array.Empty<ScoredAlbum>();
-    public IReadOnlyList<ScoredArtist> Artists { get; init; } = System.Array.Empty<ScoredArtist>();
-    public IReadOnlyList<ScoredTrack> Tracks { get; init; } = System.Array.Empty<ScoredTrack>();
-    public IReadOnlyList<ScoredReview> Reviews { get; init; } = System.Array.Empty<ScoredReview>();
-    public IReadOnlyList<Product> Products { get; init; } = System.Array.Empty<Product>();
+    public IReadOnlyList<AlbumHit> Albums { get; init; } = Array.Empty<AlbumHit>();
 
-    public IReadOnlyList<FacetGroup> Facets { get; init; } = System.Array.Empty<FacetGroup>();
+    public IReadOnlyList<FacetGroup> Facets { get; init; } = Array.Empty<FacetGroup>();
 
     public string? DidYouMean { get; init; }
-    public object? TopResult { get; init; }
+    public AlbumHit? TopResult { get; init; }
     public int TotalCount { get; init; }
 }
 

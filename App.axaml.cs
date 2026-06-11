@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MusicApp.Data;
+using MusicApp.Models;
 using MusicApp.Services;
 using MusicApp.ViewModels;
 using MusicApp.Views;
@@ -26,8 +27,8 @@ public partial class App : Application
 
             var nav = new NavigationService();
             var auth = new AuthService(dbFactory);
-            var cart = new CartService(auth, dbFactory);
             var catalog = new CatalogService(dbFactory);
+            var cart = new CartService(auth, dbFactory, catalog);
             var likes = new LikesService(dbFactory);
             var search = new SearchService(dbFactory);
             var files = new FileDialogService();
@@ -42,33 +43,29 @@ public partial class App : Application
             nav.Register(NavTarget.Product,
                 param => new ProductViewModel(catalog, cart, player, nav, auth, (int)(param ?? 1)));
             nav.Register(NavTarget.Cart,
-                _ => new CartViewModel(cart, nav, auth));
+                _ => new CartViewModel(cart, nav, auth, catalog));
             nav.Register(NavTarget.Profile,
                 _ => new ProfileViewModel(auth, catalog, search, nav));
             nav.Register(NavTarget.Orders,
                 _ => new OrdersViewModel(catalog, auth));
             nav.Register(NavTarget.Player,
-                _ => new PlayerViewModel(player, catalog, auth, likes, nav, files));
+                param => new PlayerViewModel(player, catalog, auth, likes, nav, files, param as Album));
             nav.Register(NavTarget.Admin,
                 _ => new AdminViewModel(catalog, files));
 
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
-            var loginVm = new LoginViewModel(auth);
-            var loginWindow = new LoginWindow { DataContext = loginVm };
+            // The window is always the main window now; login is an in-app
+            // overlay. Restore a "remember me" session if one was saved, else
+            // pop the login card on top of the (guest) app.
+            var restored = auth.TryRestoreSession();
 
-            loginVm.RequestClose += () =>
-            {
-                var mainWindow = new MainWindow
-                {
-                    DataContext = new MainWindowViewModel(nav, auth, cart, player, catalog, search)
-                };
-                mainWindow.Show();
-                desktop.MainWindow = mainWindow;
-                loginWindow.Close();
-            };
+            var mainVm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
+            var mainWindow = new MainWindow { DataContext = mainVm };
+            desktop.MainWindow = mainWindow;
 
-            desktop.MainWindow = loginWindow;
+            if (!restored)
+                mainVm.ShowLogin();
         }
 
         base.OnFrameworkInitializationCompleted();

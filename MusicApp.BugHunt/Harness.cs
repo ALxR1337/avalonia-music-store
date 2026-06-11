@@ -30,6 +30,8 @@ public sealed class Harness
     public IAuthService? Auth { get; private set; }
     public INavigationService? Nav { get; private set; }
     public ICatalogService? Catalog { get; private set; }
+    public IPlayerService? Player { get; private set; }
+    public ICartService? Cart { get; private set; }
 
     public static string ArtifactsDir { get; } = ResolveArtifactsDir();
 
@@ -51,8 +53,8 @@ public sealed class Harness
 
         var nav = new NavigationService();
         var auth = new AuthService(dbFactory);
-        var cart = new CartService(auth, dbFactory);
         var catalog = new CatalogService(dbFactory);
+        var cart = new CartService(auth, dbFactory, catalog);
         var likes = new LikesService(dbFactory);
         var search = new SearchService(dbFactory);
         var files = new FileDialogService();
@@ -67,18 +69,27 @@ public sealed class Harness
         nav.Register(NavTarget.Product,
             p => new ProductViewModel(catalog, cart, player, nav, auth, (int)(p ?? 1)));
         nav.Register(NavTarget.Cart,
-            _ => new CartViewModel(cart, nav, auth));
+            _ => new CartViewModel(cart, nav, auth, catalog));
         nav.Register(NavTarget.Profile,
             _ => new ProfileViewModel(auth, catalog, search, nav));
         nav.Register(NavTarget.Orders,
             _ => new OrdersViewModel(catalog, auth));
         nav.Register(NavTarget.Player,
-            _ => new PlayerViewModel(player, catalog, auth, likes, nav, files));
+            p => new PlayerViewModel(player, catalog, auth, likes, nav, files, p as MusicApp.Models.Album));
         nav.Register(NavTarget.Admin,
             _ => new AdminViewModel(catalog, files));
 
         if (!string.IsNullOrEmpty(loginAs))
             auth.TryLogin(loginAs, password ?? string.Empty);
+
+        // Mute the player for the whole run. PlayerService drives live LibVLC, so
+        // any test that calls Play() would otherwise emit real sound through the
+        // host's speakers — several overlapping seeded tracks at full volume.
+        // Done here (test harness only) so the shipping app's audio is untouched.
+        // Set after login: TryLogin reloads the user's persisted volume, so this
+        // must win the last word. Volume=0 reaches _mp.Volume the same way the
+        // persisted level did, so it reliably silences playback.
+        player.Volume = 0;
 
         Trace("vm-build");
         var vm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
@@ -91,6 +102,8 @@ public sealed class Harness
         Auth = auth;
         Nav = nav;
         Catalog = catalog;
+        Player = player;
+        Cart = cart;
         Pump();
         Trace("pumped");
         return window;

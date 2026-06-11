@@ -94,7 +94,9 @@ public partial class ProductViewModel : ViewModelBase
     public string StockLabel => Product is null
         ? "—"
         : Product.Stock > 0 ? $"У наявності: {Product.Stock}" : "Немає в наявності";
-    public string RatingLabel => $"★ {Product?.Rating:0.0} · {Product?.ReviewCount} відгуків";
+    public string RatingLabel => Product?.ReviewCount is int c and > 0
+        ? $"★ {Product.Rating:0.0} · {Converters.UkrainianPluralConverter.Format(c, "відгук", "відгуки", "відгуків")}"
+        : "Ще немає відгуків";
     public string? CoverPath => Product?.Album?.CoverPath;
     public bool HasCover => !string.IsNullOrWhiteSpace(CoverPath);
     public bool IsVinylSelected => Product?.Format == ProductFormat.Vinyl;
@@ -159,7 +161,45 @@ public partial class ProductViewModel : ViewModelBase
         if (Product.Format == wanted) return;
         var sibling = _catalog.GetSiblingProduct(Product.Id);
         if (sibling is null) return;
-        _nav.NavigateTo(NavTarget.Product, sibling.Id);
+        // In-place swap to the sibling product — NOT a navigation: no history
+        // entry, no VM rebuild, no scroll reset. Picking LP vs CD is page state,
+        // not a page change.
+        LoadProduct(sibling.Id);
+    }
+
+    // Points the page at a different product without leaving it. Reviews and
+    // wishlist state are per-product (LP and CD are distinct products), so they
+    // reload; the album, tracks and cover are shared between formats.
+    private void LoadProduct(int productId)
+    {
+        Product = _catalog.GetProduct(productId);
+        ReloadReviews();
+        ReloadFormatAvailability();
+        ReloadWishlistState();
+        ReloadCanLeaveReview();
+    }
+
+    // Product drives a large surface of computed labels — refresh them all
+    // whenever it is reassigned (format swap, post-review reload).
+    partial void OnProductChanged(Product? value)
+    {
+        OnPropertyChanged(nameof(AlbumTitle));
+        OnPropertyChanged(nameof(ArtistName));
+        OnPropertyChanged(nameof(GenreLabel));
+        OnPropertyChanged(nameof(YearLabel));
+        OnPropertyChanged(nameof(AlbumDescription));
+        OnPropertyChanged(nameof(HasAlbumDescription));
+        OnPropertyChanged(nameof(ArtistBio));
+        OnPropertyChanged(nameof(HasArtistBio));
+        OnPropertyChanged(nameof(AlbumGenreNames));
+        OnPropertyChanged(nameof(MetadataLine));
+        OnPropertyChanged(nameof(PriceLabel));
+        OnPropertyChanged(nameof(StockLabel));
+        OnPropertyChanged(nameof(RatingLabel));
+        OnPropertyChanged(nameof(CoverPath));
+        OnPropertyChanged(nameof(HasCover));
+        OnPropertyChanged(nameof(IsVinylSelected));
+        OnPropertyChanged(nameof(IsCdSelected));
     }
 
     [RelayCommand]

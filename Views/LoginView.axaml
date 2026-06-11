@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MusicApp.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="560"
+             x:Class="MusicApp.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
+
+    <!-- Centered login card. Hosted on a dimmed backdrop by MainWindow; the
+         card swallows pointer presses so only backdrop clicks dismiss it. -->
+    <UserControl.Styles>
+        <!-- The card itself is BgElevated, which is also the global TextBox
+             background — without an override the inputs are invisible until
+             focused. Sink them to BgBase and outline with the divider. -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{StaticResource BgBaseBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Width="420" Padding="40,36"
+            Background="{StaticResource BgElevatedBrush}"
+            CornerRadius="{StaticResource RadiusXL}"
+            BorderBrush="{StaticResource DividerBrush}"
+            BorderThickness="1"
+            BoxShadow="0 24 64 0 #99000000">
+        <StackPanel Spacing="18">
+
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <Border Background="{StaticResource AccentBrush}"
+                        CornerRadius="14" Width="56" Height="56"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="♪" Foreground="{StaticResource OnAccentBrush}"
+                               FontSize="28" FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Музичний магазин" Classes="h2"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Увійдіть, щоб купувати та слухати"
+                           Classes="muted" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+                <TextBlock Text="Логін" Classes="muted"/>
+                <TextBox x:Name="UsernameBox"
+                         Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="alex_rider"
+                         KeyDown="OnUsernameKeyDown"/>
+
+                <TextBlock Text="E-mail" Classes="muted"
+                           IsVisible="{Binding IsRegistering}"/>
+                <TextBox x:Name="EmailBox"
+                         Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="you@example.com"
+                         IsVisible="{Binding IsRegistering}"
+                         KeyDown="OnEmailKeyDown"/>
+
+                <TextBlock Text="Пароль" Classes="muted"/>
+                <TextBox x:Name="PasswordBox"
+                         Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                         PasswordChar="●"
+                         KeyDown="OnPasswordKeyDown"/>
+
+                <TextBlock Text="{Binding Error}"
+                           Foreground="{StaticResource DangerBrush}"
+                           FontSize="12"
+                           IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <CheckBox IsChecked="{Binding RememberMe}"
+                      Content="Запам'ятати мене"/>
+
+            <Button Classes="primary" HorizontalAlignment="Stretch"
+                    Content="Увійти" IsVisible="{Binding !IsRegistering}"
+                    Command="{Binding LoginCommand}"/>
+            <Button Classes="primary" HorizontalAlignment="Stretch"
+                    Content="Створити акаунт" IsVisible="{Binding IsRegistering}"
+                    Command="{Binding LoginCommand}"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <TextBlock Text="Немає акаунту?" Classes="muted" VerticalAlignment="Center"
+                           IsVisible="{Binding !IsRegistering}"/>
+                <Button Classes="link-inline" Content="Реєстрація"
+                        IsVisible="{Binding !IsRegistering}"
+                        Command="{Binding ToggleModeCommand}"/>
+                <Button Classes="link-inline" Content="Назад до входу"
+                        IsVisible="{Binding IsRegistering}"
+                        Command="{Binding ToggleModeCommand}"/>
+                <TextBlock Text="·" Classes="muted" VerticalAlignment="Center"/>
+                <Button Classes="link-inline" Content="Продовжити як гість"
+                        Command="{Binding GuestCommand}"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

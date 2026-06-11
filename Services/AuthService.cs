@@ -9,6 +9,7 @@ namespace MusicApp.Services;
 public class AuthService : IAuthService
 {
     private readonly IDbContextFactory<MusicStoreDbContext> _dbFactory;
+    private readonly SessionStore _session = new();
 
     public AuthService(IDbContextFactory<MusicStoreDbContext> dbFactory)
     {
@@ -21,7 +22,7 @@ public class AuthService : IAuthService
     public bool IsAuthenticated => CurrentUser is { Role: not UserRole.Guest };
     public bool IsAdmin => CurrentUser?.Role == UserRole.Admin;
 
-    public bool TryLogin(string username, string password)
+    public bool TryLogin(string username, string password, bool rememberMe = false)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             return false;
@@ -42,11 +43,12 @@ public class AuthService : IAuthService
         if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return false;
 
         CurrentUser = user;
+        Remember(rememberMe);
         Raise();
         return true;
     }
 
-    public bool TryRegister(string username, string password, string email)
+    public bool TryRegister(string username, string password, string email, bool rememberMe = false)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             return false;
@@ -73,6 +75,32 @@ public class AuthService : IAuthService
             };
             db.Users.Add(user);
             db.SaveChanges();
+            CurrentUser = user;
+        }
+        catch
+        {
+            return false;
+        }
+
+        Remember(rememberMe);
+        Raise();
+        return true;
+    }
+
+    public bool TryRestoreSession()
+    {
+        var id = _session.LoadUserId();
+        if (id is null) return false;
+
+        try
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var user = db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id.Value);
+            if (user is null || user.Role == UserRole.Guest)
+            {
+                _session.Clear();
+                return false;
+            }
             CurrentUser = user;
         }
         catch
@@ -116,7 +144,18 @@ public class AuthService : IAuthService
     public void Logout()
     {
         CurrentUser = null;
+        _session.Clear();
         Raise();
+    }
+
+    // Save the current user for next launch when "remember me" is on; otherwise
+    // wipe any stale remembered session so it can't auto-restore.
+    private void Remember(bool rememberMe)
+    {
+        if (rememberMe && CurrentUser is { Id: > 0 })
+            _session.Save(CurrentUser.Id);
+        else
+            _session.Clear();
     }
 
     private void Raise() => CurrentUserChanged?.Invoke(this, EventArgs.Empty);

@@ -11,14 +11,17 @@ public class CartService : ICartService
 {
     private readonly IAuthService _auth;
     private readonly IDbContextFactory<MusicStoreDbContext> _dbFactory;
+    private readonly ICatalogService? _catalog;
 
     private int _currentUserId;
     private int _guestNextId = -1;  // negative IDs for in-memory guest items
 
-    public CartService(IAuthService auth, IDbContextFactory<MusicStoreDbContext> dbFactory)
+    public CartService(IAuthService auth, IDbContextFactory<MusicStoreDbContext> dbFactory,
+        ICatalogService? catalog = null)
     {
         _auth = auth;
         _dbFactory = dbFactory;
+        _catalog = catalog;
         _auth.CurrentUserChanged += OnCurrentUserChanged;
     }
 
@@ -140,7 +143,7 @@ public class CartService : ICartService
         Raise();
     }
 
-    public Order Checkout()
+    public Order Checkout(string? shippingAddress = null, string? comment = null)
     {
         var userId = _currentUserId;
         var orderItems = Items.Select(i =>
@@ -168,7 +171,8 @@ public class CartService : ICartService
             Status = OrderStatus.New,
             TotalAmount = total,
             UserEmail = userEmail,
-            ShippingAddress = null,  // collected separately (no UI for it yet)
+            ShippingAddress = string.IsNullOrWhiteSpace(shippingAddress) ? null : shippingAddress.Trim(),
+            Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim(),
             Currency = "UAH",
             Items = orderItems
         };
@@ -191,6 +195,10 @@ public class CartService : ICartService
             db.CartItems.RemoveRange(cartRows);
 
             db.SaveChanges();
+
+            // The checkout decremented Stock directly in the DB; refresh the catalog's
+            // in-memory cache so subsequent stock checks and listings see live values.
+            _catalog?.RefreshReferenceData();
         }
 
         Items.Clear();

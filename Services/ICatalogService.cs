@@ -60,4 +60,8 @@ public interface ICatalogService
 
     void ExportOrdersToExcel(string path);
     void ExportProductsToCsv(string path);
+
+    // Reloads the in-memory reference cache (genres/artists/albums/products/reviews) from
+    // the DB — call after out-of-band writes (e.g. checkout decrementing Stock).
+    void RefreshReferenceData();
 }
