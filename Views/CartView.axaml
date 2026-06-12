@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MusicApp.ViewModels"
              xmlns:m="using:MusicApp.Models"
+             xmlns:conv="using:MusicApp.Converters"
              x:Class="MusicApp.Views.CartView"
              x:DataType="vm:CartViewModel">
 
@@ -127,6 +128,87 @@
                             VerticalAlignment="Center" FontSize="14"/>
                 </Grid>
             </Border>
+
+            <!-- «Збережене» — wishlist items saved from product pages; «До кошика»
+                 moves an item into the cart and out of the saved list. -->
+            <StackPanel Spacing="14" IsVisible="{Binding HasWishlistItems}">
+                <TextBlock Classes="h2" Text="{Binding WishlistTitle}"/>
+                <ItemsControl ItemsSource="{Binding WishlistItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="m:Product">
+                            <Border Background="{StaticResource BgElevatedBrush}"
+                                    CornerRadius="{StaticResource RadiusM}"
+                                    Padding="14" Margin="0,0,0,10">
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+
+                                    <!-- Cover + title open the product page -->
+                                    <Button Grid.Column="0" Classes="ghost" Padding="0"
+                                            HorizontalAlignment="Left"
+                                            HorizontalContentAlignment="Left"
+                                            Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).OpenWishlistItemCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="86,*">
+                                            <Border Grid.Column="0" Width="72" Height="72"
+                                                    CornerRadius="{StaticResource RadiusS}"
+                                                    Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
+                                                    ClipToBounds="True">
+                                                <Grid>
+                                                    <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
+                                                               FontSize="30" FontWeight="Bold" Opacity="0.45"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{StaticResource FgPrimaryBrush}"
+                                                               IsVisible="{Binding Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                    <Image Source="{Binding Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                                           Stretch="UniformToFill"/>
+                                                </Grid>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="3">
+                                                <TextBlock Text="{Binding Album.Title}" FontWeight="SemiBold"/>
+                                                <TextBlock Classes="muted"
+                                                           Text="{Binding Album.Artist.Name}"/>
+                                                <Border Classes="chip" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding FormatBadge}" FontSize="11"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                               FontWeight="SemiBold" MinWidth="80"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                                               Margin="16,0"/>
+
+                                    <Button Grid.Column="2" Classes="ghost"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
+                                            Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).MoveWishlistItemToCartCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Classes="icon sm" Data="{StaticResource IconCart}"
+                                                  VerticalAlignment="Center"/>
+                                            <TextBlock Text="До кошика" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Grid.Column="2" Classes="muted"
+                                               Text="Немає в наявності"
+                                               VerticalAlignment="Center" Margin="10,0"
+                                               IsVisible="{Binding Stock, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
+
+                                    <Button Grid.Column="3" Classes="icon" Width="32" Height="32"
+                                            Margin="8,0,0,0"
+                                            ToolTip.Tip="Прибрати зі збереженого"
+                                            Command="{Binding $parent[ItemsControl].((vm:CartViewModel)DataContext).RemoveWishlistItemCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Path Classes="icon accent filled" Data="{StaticResource IconHeart}"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
 
             <!-- «Купіть також» — same-artist / same-genre albums, bestsellers as
                  fallback; doubles as a starting point when the cart is empty. -->

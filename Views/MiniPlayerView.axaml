@@ -22,13 +22,20 @@
          while the cover (left) and volume (right) are each centred on the bar. -->
     <Grid ColumnDefinitions="*,1.4*,*">
 
-        <!-- Left: cover + track info -->
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
-                    VerticalAlignment="Center" Margin="16,0">
+        <!-- Left: cover + track info. Grid (not StackPanel) so long titles
+             truncate at the column edge instead of at an arbitrary 220px. -->
+        <Grid Grid.Column="0" ColumnDefinitions="Auto,*"
+              VerticalAlignment="Center" Margin="16,0">
             <Border Width="48" Height="48" CornerRadius="{StaticResource RadiusS}"
                     Background="{Binding CurrentAlbum, Converter={StaticResource AlbumToGradient}}"
                     ClipToBounds="True">
                 <Grid>
+                    <!-- Album-less playback (local file): show a glyph instead
+                         of a bare grey square. -->
+                    <Path Classes="icon" Data="{StaticResource IconHeadphones}"
+                          Width="22" Height="22" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          IsVisible="{Binding CurrentAlbum, Converter={x:Static ObjectConverters.IsNull}}"/>
                     <TextBlock Text="{Binding CurrentAlbum.Title, Converter={StaticResource FirstChar}}"
                                FontSize="20" FontWeight="Bold" Opacity="0.45"
                                HorizontalAlignment="Center"
@@ -39,23 +46,32 @@
                            Stretch="UniformToFill"/>
                 </Grid>
             </Border>
-            <StackPanel VerticalAlignment="Center" Spacing="2" MaxWidth="220">
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="12,0,0,0">
                 <TextBlock Text="{Binding TrackTitle}" FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding ArtistName}" Classes="muted"
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-        </StackPanel>
+        </Grid>
 
         <!-- Center: transport controls over the seek strip, centred as a block -->
         <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="24,0">
             <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+                <Button Classes="icon" Width="28" Height="28" VerticalAlignment="Center"
+                        Command="{Binding ToggleShuffleCommand}"
+                        ToolTip.Tip="{Binding ShuffleTooltip}">
+                    <Path Width="16" Height="16" Classes="icon"
+                          Classes.accent="{Binding IsShuffleOn}"
+                          Data="{StaticResource IconShuffle}"/>
+                </Button>
                 <Button Classes="icon" Width="32" Height="32"
-                        Command="{Binding PreviousCommand}">
+                        Command="{Binding PreviousCommand}"
+                        ToolTip.Tip="Попередній трек">
                     <Path Classes="icon" Data="{StaticResource IconSkipBack}"/>
                 </Button>
                 <Button Classes="play-circle" Width="40" Height="40" CornerRadius="20"
-                        Command="{Binding PlayPauseCommand}">
+                        Command="{Binding PlayPauseCommand}"
+                        ToolTip.Tip="Відтворити / пауза (Пробіл)">
                     <Panel>
                         <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
                               Width="16" Height="16" Stretch="Uniform"
@@ -72,8 +88,16 @@
                     </Panel>
                 </Button>
                 <Button Classes="icon" Width="32" Height="32"
-                        Command="{Binding NextCommand}">
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="Наступний трек">
                     <Path Classes="icon" Data="{StaticResource IconSkipForward}"/>
+                </Button>
+                <Button Classes="icon" Width="28" Height="28" VerticalAlignment="Center"
+                        Command="{Binding CycleRepeatCommand}"
+                        ToolTip.Tip="{Binding RepeatTooltip}">
+                    <Path Width="16" Height="16" Classes="icon"
+                          Classes.accent="{Binding RepeatMode, Converter={StaticResource RepeatModeNotOff}}"
+                          Data="{Binding RepeatMode, Converter={StaticResource RepeatModeToIcon}}"/>
                 </Button>
             </StackPanel>
 
@@ -97,18 +121,31 @@
         <!-- Right: volume + window buttons, centred on the bar -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
-            <!-- This glyph's geometry renders ~2px above its box centre, so it
-                 reads high next to the track/buttons; nudge it down to match. -->
-            <Path Classes="icon" Data="{StaticResource IconVolume}"
-                  VerticalAlignment="Center" Margin="0,4,0,0"/>
+            <!-- The volume glyph's geometry renders ~2px above its box centre;
+                 nudge the panel down to match the row. -->
+            <Button Classes="icon" Width="28" Height="28" VerticalAlignment="Center"
+                    Command="{Binding ToggleMuteCommand}"
+                    ToolTip.Tip="Вимкнути / увімкнути звук">
+                <Panel Margin="0,2,0,0">
+                    <Path Classes="icon" Data="{StaticResource IconVolume}"
+                          Width="18" Height="18" Stretch="Uniform"
+                          IsVisible="{Binding !IsMuted}"/>
+                    <Path Classes="icon" Data="{StaticResource IconVolumeMuted}"
+                          Width="18" Height="18" Stretch="Uniform"
+                          IsVisible="{Binding IsMuted}"/>
+                </Panel>
+            </Button>
             <Slider Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}"
-                    VerticalAlignment="Center"/>
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Гучність"/>
             <Button Classes="icon" Width="32" Height="32"
-                    Command="{Binding ExpandCommand}">
+                    Command="{Binding ExpandCommand}"
+                    ToolTip.Tip="Відкрити сторінку плеєра">
                 <Path Classes="icon" Data="{StaticResource IconMaximize}"/>
             </Button>
             <Button Classes="icon" Width="32" Height="32"
-                    Command="{Binding CloseCommand}">
+                    Command="{Binding CloseCommand}"
+                    ToolTip.Tip="Зупинити і сховати плеєр">
                 <Path Classes="icon" Data="{StaticResource IconClose}"/>
             </Button>
         </StackPanel>

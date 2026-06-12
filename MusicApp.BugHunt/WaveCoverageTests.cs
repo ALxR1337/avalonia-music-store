@@ -126,12 +126,12 @@ public class WaveCoverageTests
         h.RunStep("wave6-01-admin-products",
             () => h.Nav!.NavigateTo(NavTarget.Admin));
 
-        // Probe order expander by toggling on the first order.
-        var orders = h.Catalog!.Orders;
-        if (orders.Count > 0 && h.Nav!.CurrentView is AdminViewModel admin)
+        // Probe order expander by toggling on the first order row.
+        if (h.Nav!.CurrentView is AdminViewModel admin && admin.OrderRows.Count > 0)
         {
+            admin.SelectSectionCommand.Execute("Orders");
             h.RunStep("wave6-02-admin-expand-order",
-                () => admin.ToggleOrderDetailsCommand.Execute(orders[0]));
+                () => admin.ToggleOrderDetailsCommand.Execute(admin.OrderRows[0]));
         }
     }
 
@@ -156,19 +156,21 @@ public class WaveCoverageTests
     }
 
     [AvaloniaFact]
-    public void Orders_page_expands_details_for_user()
+    public void Orders_tab_expands_details_for_user()
     {
         var h = new Harness();
         h.OpenMainWindow(loginAs: "demo", password: "demo");
         h.SetWindowSize(1280, 800);
 
+        // Order history lives on the profile's first tab now — the standalone
+        // orders page was removed as a weaker duplicate.
         h.RunStep("wave7-04-orders-initial",
-            () => h.Nav!.NavigateTo(NavTarget.Orders));
+            () => h.Nav!.NavigateTo(NavTarget.Profile));
 
-        if (h.Nav!.CurrentView is OrdersViewModel ovm && ovm.Orders.Count > 0)
+        if (h.Nav!.CurrentView is ProfileViewModel pvm && pvm.Orders.Count > 0)
         {
             h.RunStep("wave7-05-orders-expand",
-                () => ovm.ToggleDetailsCommand.Execute(ovm.Orders[0]));
+                () => pvm.ToggleOrderDetailsCommand.Execute(pvm.Orders[0]));
         }
     }
 

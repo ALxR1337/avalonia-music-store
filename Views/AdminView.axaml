@@ -7,291 +7,640 @@
              x:Class="MusicApp.Views.AdminView"
              x:DataType="vm:AdminViewModel">
 
+    <UserControl.Styles>
+        <!-- Admin table chrome: header labels + hoverable rows separated by soft dividers -->
+        <Style Selector="TextBlock.col-head">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource FgTertiaryBrush}"/>
+            <Setter Property="LetterSpacing" Value="1"/>
+        </Style>
+        <Style Selector="Border.table-row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DividerSoftBrush}"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        </Style>
+        <Style Selector="Border.table-row:pointerover">
+            <Setter Property="Background" Value="#0AFFFFFF"/>
+        </Style>
+        <!-- Deactivated products are dimmed so their state is obvious at a glance -->
+        <Style Selector="Border.table-row.inactive">
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+        <Style Selector="TextBlock.danger">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+        </Style>
+        <!-- Floating status toast: overlays content (no layout shift), error variant turns red -->
+        <Style Selector="Border.toast">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Border.toast.error">
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+        </Style>
+        <!-- Chevron flips when the order row is expanded -->
+        <Style Selector="Button.expander Path">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        </Style>
+        <Style Selector="Button.expander.open Path">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+        <!-- KPI card as a click target (mirrors Button.album-card): the whole
+             card opens the section that explains its number -->
+        <Style Selector="Button.kpi">
+            <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusM}"/>
+            <Setter Property="Padding" Value="20,16"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.kpi /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusM}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.kpi:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                         Button.kpi:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource BgElevatedHoverBrush}"/>
+        </Style>
+        <!-- KPI number lights up only when the value calls for attention -->
+        <Style Selector="TextBlock.kpi-num">
+            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="TextBlock.kpi-num.accent">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
     <Panel>
 
-    <StackPanel Margin="32,24,32,32" Spacing="20"
+    <StackPanel Margin="32,24,32,32" Spacing="16"
                 IsVisible="{Binding !IsEditingProduct}">
 
-        <TextBlock Classes="h1" Text="Адміністрування"/>
+        <!-- Same name as the sidebar item so the page and the nav entry read
+             as one place, not two. -->
+        <StackPanel Spacing="4">
+            <TextBlock Classes="h1" Text="Керування магазином"/>
+            <TextBlock Classes="muted" Text="Каталог, замовлення, статистика та користувачі магазину"/>
+        </StackPanel>
 
-        <!-- Status banner -->
-        <Border Background="{StaticResource BgElevatedBrush}"
-                CornerRadius="{StaticResource RadiusS}" Padding="12,8"
-                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding StatusMessage}" Classes="muted"/>
-        </Border>
+        <!-- Section switcher -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="chip-tab" Content="Огляд"
+                    Classes.active="{Binding IsSectionOverview}"
+                    Command="{Binding SelectSectionCommand}" CommandParameter="Overview"/>
+            <Button Classes="chip-tab" Content="Товари"
+                    Classes.active="{Binding IsSectionProducts}"
+                    Command="{Binding SelectSectionCommand}" CommandParameter="Products"/>
+            <Button Classes="chip-tab" Content="Замовлення"
+                    Classes.active="{Binding IsSectionOrders}"
+                    Command="{Binding SelectSectionCommand}" CommandParameter="Orders"/>
+            <Button Classes="chip-tab" Content="Користувачі"
+                    Classes.active="{Binding IsSectionUsers}"
+                    Command="{Binding SelectSectionCommand}" CommandParameter="Users"/>
+        </StackPanel>
 
-        <!-- KPI cards -->
-        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
-            <Border Grid.Column="0" Classes="card" Padding="20">
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="muted" Text="Товарів у каталозі"/>
-                    <TextBlock Text="{Binding TotalProducts}" FontSize="32" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Grid.Column="1" Classes="card" Padding="20">
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="muted" Text="Замовлень"/>
-                    <TextBlock Text="{Binding TotalOrders}" FontSize="32" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Grid.Column="2" Classes="card" Padding="20">
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="muted" Text="Виручка (загалом)"/>
-                    <TextBlock Text="{Binding GrossRevenue, StringFormat='{}{0:#,0} ₴'}"
-                               FontSize="32" FontWeight="Bold"
-                               Foreground="{StaticResource AccentBrush}"/>
-                </StackPanel>
-            </Border>
-        </Grid>
+        <!-- ============ Огляд ============ -->
+        <StackPanel Spacing="16" IsVisible="{Binding IsSectionOverview}">
 
-        <TabControl>
-
-            <!-- ============ Товари ============ -->
-            <TabItem Header="Товари">
-                <StackPanel Spacing="10" Margin="0,14,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="primary" Content="+ Додати товар"
-                                Command="{Binding AddProductCommand}"/>
-                        <Button Classes="ghost" Content="Експорт у CSV"
-                                Command="{Binding ExportProductsCsvCommand}"/>
+            <!-- KPI cards — clickable, each opens the matching section/filter -->
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="16">
+                <Button Grid.Column="0" Classes="kpi" ToolTip.Tip="Відкрити «Товари»"
+                        Command="{Binding OpenKpiCommand}" CommandParameter="Products">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="col-head" Text="ТОВАРІВ У КАТАЛОЗІ"/>
+                        <TextBlock Classes="kpi-num" Text="{Binding TotalProducts}"/>
                     </StackPanel>
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
-                        <ItemsControl ItemsSource="{Binding Products}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="m:Product">
-                                    <Grid ColumnDefinitions="50,*,80,90,80,Auto"
-                                          Margin="0,6" VerticalAlignment="Center">
-                                        <TextBlock Grid.Column="0" Text="{Binding Id}" Classes="muted"/>
-                                        <StackPanel Grid.Column="1" Spacing="2">
-                                            <TextBlock Text="{Binding Album.Title}" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding Album.Artist.Name}" Classes="muted" FontSize="11"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="2" Text="{Binding FormatBadge}" Classes="muted"/>
-                                        <TextBlock Grid.Column="3"
-                                                   Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
-                                                   Foreground="{StaticResource AccentBrush}"/>
-                                        <TextBlock Grid.Column="4"
-                                                   Text="{Binding Stock, StringFormat='шт: {0}'}"
-                                                   Classes="muted"/>
-                                        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="4">
-                                            <Button Classes="icon" Width="32" Height="32"
-                                                    Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).EditProductCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <Path Classes="icon" Data="{StaticResource IconEdit}"/>
-                                            </Button>
-                                            <Button Classes="icon" Width="32" Height="32"
-                                                    Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).DeleteProductCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <Path Classes="icon" Data="{StaticResource IconTrash}"/>
-                                            </Button>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Border>
-                </StackPanel>
-            </TabItem>
+                </Button>
+                <Button Grid.Column="1" Classes="kpi" ToolTip.Tip="Відкрити «Замовлення»"
+                        Command="{Binding OpenKpiCommand}" CommandParameter="Orders">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="col-head" Text="ЗАМОВЛЕНЬ ЗАГАЛОМ"/>
+                        <TextBlock Classes="kpi-num" Text="{Binding TotalOrders}"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Classes="kpi" ToolTip.Tip="Відкрити нові замовлення"
+                        Command="{Binding OpenKpiCommand}" CommandParameter="NewOrders">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="col-head" Text="НОВІ ЗАМОВЛЕННЯ"/>
+                        <!-- Accent only when there is actually something new -->
+                        <TextBlock Classes="kpi-num"
+                                   Classes.accent="{Binding NewOrdersCount, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
+                                   Text="{Binding NewOrdersCount}"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" Classes="kpi" ToolTip.Tip="Відкрити виконані замовлення"
+                        Command="{Binding OpenKpiCommand}" CommandParameter="Revenue">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="col-head" Text="ВИРУЧКА (ВИКОНАНІ)"/>
+                        <TextBlock Classes="kpi-num accent"
+                                   Text="{Binding GrossRevenue, StringFormat='{}{0:#,0} ₴'}"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
 
-            <!-- ============ Замовлення ============ -->
-            <TabItem Header="Замовлення">
-                <StackPanel Spacing="10" Margin="0,14,0,0">
-                    <Button Classes="primary" Content="Експорт у Excel" HorizontalAlignment="Left"
-                            Command="{Binding ExportOrdersExcelCommand}"/>
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
-                        <ItemsControl ItemsSource="{Binding Orders}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="m:Order">
-                                    <StackPanel Spacing="6" Margin="0,4">
-                                        <Grid ColumnDefinitions="60,120,150,140,Auto" VerticalAlignment="Center">
-                                            <TextBlock Grid.Column="0" Text="{Binding Id, StringFormat='#{0}'}"/>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
-                                                       Classes="muted"/>
-                                            <ComboBox Grid.Column="2"
-                                                      ItemsSource="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).OrderStatuses}"
-                                                      SelectedItem="{Binding Status}"
-                                                      HorizontalAlignment="Stretch">
-                                                <ComboBox.Styles>
-                                                    <Style Selector="ComboBox">
-                                                        <Setter Property="MinWidth" Value="140"/>
-                                                    </Style>
-                                                </ComboBox.Styles>
-                                            </ComboBox>
-                                            <TextBlock Grid.Column="3"
-                                                       Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
-                                                       Foreground="{StaticResource AccentBrush}"/>
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
-                                                <Button Classes="ghost" Content="Зберегти"
-                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ChangeOrderStatusCommand}"
-                                                        CommandParameter="{Binding}"/>
-                                                <Button Classes="ghost" Content="Деталі"
-                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ToggleOrderDetailsCommand}"
-                                                        CommandParameter="{Binding}"/>
-                                            </StackPanel>
-                                        </Grid>
+            <!-- Revenue per period -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="20,16">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="h3" Text="Виручка за період"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PeriodLabel}" Classes="muted"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
 
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Border>
+                    <!-- Calendar periods (this week starts Monday, this month on the
+                         1st…); «Власний» lights up when the dates are hand-picked -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="chip-tab" Content="Сьогодні"
+                                Classes.active="{Binding IsPeriodToday}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Today"/>
+                        <Button Classes="chip-tab" Content="Цей тиждень"
+                                Classes.active="{Binding IsPeriodWeek}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Week"/>
+                        <Button Classes="chip-tab" Content="Цей місяць"
+                                Classes.active="{Binding IsPeriodMonth}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Month"/>
+                        <Button Classes="chip-tab" Content="Цей квартал"
+                                Classes.active="{Binding IsPeriodQuarter}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Quarter"/>
+                        <Button Classes="chip-tab" Content="Цей рік"
+                                Classes.active="{Binding IsPeriodYear}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Year"/>
+                        <Button Classes="chip-tab" Content="Весь час"
+                                Classes.active="{Binding IsPeriodAllTime}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="AllTime"/>
+                        <Button Classes="chip-tab" Content="Власний"
+                                Classes.active="{Binding IsPeriodCustom}"
+                                Command="{Binding SelectPeriodCommand}" CommandParameter="Custom"/>
+                    </StackPanel>
 
-                    <!-- Single expander panel for the currently expanded order -->
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14"
-                            IsVisible="{Binding ExpandedOrder, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="h3"
-                                       Text="{Binding ExpandedOrder.Id, StringFormat='Деталі замовлення #{0}'}"/>
-                            <ItemsControl ItemsSource="{Binding ExpandedOrder.Items}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="m:OrderItem">
-                                        <Grid ColumnDefinitions="*,80,Auto,Auto" Margin="0,3">
-                                            <StackPanel Grid.Column="0" Spacing="2">
-                                                <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Product.Album.Artist.Name}" Classes="muted" FontSize="11"/>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}" Classes="muted"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding Quantity, StringFormat='× {0}'}"
-                                                       Classes="muted" Margin="10,0"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
-                                                       Foreground="{StaticResource AccentBrush}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12"
+                          VerticalAlignment="Center">
+                        <TextBlock Grid.Column="0" Text="Від" Classes="muted" VerticalAlignment="Center"/>
+                        <DatePicker Grid.Column="1"
+                                    SelectedDate="{Binding RevenueFrom, Converter={x:Static conv:DateTimeOffsetConverter.Instance}}"/>
+                        <TextBlock Grid.Column="2" Text="До" Classes="muted" VerticalAlignment="Center"/>
+                        <DatePicker Grid.Column="3"
+                                    SelectedDate="{Binding RevenueTo, Converter={x:Static conv:DateTimeOffsetConverter.Instance}}"/>
+                    </Grid>
+
+                    <TextBlock Classes="danger" FontSize="12"
+                               Text="Дата «Від» пізніша за «До» — виберіть коректний діапазон."
+                               IsVisible="{Binding IsPeriodRangeInvalid}"/>
+
+                    <Border Height="1" Background="{StaticResource DividerSoftBrush}"/>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Classes="col-head" Text="ВИРУЧКА (ВИКОНАНІ ЗАМОВЛЕННЯ)"/>
+                            <TextBlock Text="{Binding PeriodRevenue, StringFormat='{}{0:#,0} ₴'}"
+                                       FontSize="26" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}"/>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </TabItem>
-
-            <!-- ============ Статистика ============ -->
-            <TabItem Header="Статистика">
-                <StackPanel Spacing="20" Margin="0,14,0,0">
-
-                    <!-- Revenue per period -->
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
-                        <StackPanel Spacing="12">
-                            <TextBlock Classes="h3" Text="Виручка за період"/>
-
-                            <!-- Quick-period presets -->
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="chip-tab" Content="Сьогодні"
-                                        Classes.active="{Binding IsPeriodToday}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="Today"/>
-                                <Button Classes="chip-tab" Content="Тиждень"
-                                        Classes.active="{Binding IsPeriodWeek}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="Week"/>
-                                <Button Classes="chip-tab" Content="Місяць"
-                                        Classes.active="{Binding IsPeriodMonth}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="Month"/>
-                                <Button Classes="chip-tab" Content="Квартал"
-                                        Classes.active="{Binding IsPeriodQuarter}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="Quarter"/>
-                                <Button Classes="chip-tab" Content="Рік"
-                                        Classes.active="{Binding IsPeriodYear}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="Year"/>
-                                <Button Classes="chip-tab" Content="Весь час"
-                                        Classes.active="{Binding IsPeriodAllTime}"
-                                        Command="{Binding SelectPeriodCommand}" CommandParameter="AllTime"/>
-                            </StackPanel>
-
-                            <!-- Custom range -->
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="12" VerticalAlignment="Center">
-                                <TextBlock Grid.Column="0" Text="Від" Classes="muted" VerticalAlignment="Center"/>
-                                <DatePicker Grid.Column="1"
-                                            SelectedDate="{Binding RevenueFrom, Converter={x:Static conv:DateTimeOffsetConverter.Instance}}"/>
-                                <TextBlock Grid.Column="2" Text="До" Classes="muted" VerticalAlignment="Center"/>
-                                <DatePicker Grid.Column="3"
-                                            SelectedDate="{Binding RevenueTo, Converter={x:Static conv:DateTimeOffsetConverter.Instance}}"/>
-                                <TextBlock Grid.Column="4" Text="{Binding PeriodLabel}" Classes="muted"
-                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                            </Grid>
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
-                                <Border Grid.Column="0" Classes="card" Padding="14">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Classes="muted" Text="Виручка (Completed)"/>
-                                        <TextBlock Text="{Binding PeriodRevenue, StringFormat='{}{0:#,0} ₴'}"
-                                                   FontSize="24" FontWeight="Bold"
-                                                   Foreground="{StaticResource AccentBrush}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="1" Classes="card" Padding="14">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Classes="muted" Text="Замовлень за період"/>
-                                        <TextBlock Text="{Binding PeriodOrderCount}"
-                                                   FontSize="24" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Classes="col-head" Text="ЗАМОВЛЕНЬ ЗА ПЕРІОД"/>
+                            <TextBlock Text="{Binding PeriodOrderCount}"
+                                       FontSize="26" FontWeight="Bold"/>
                         </StackPanel>
-                    </Border>
-
-                    <!-- Top-10 -->
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
-                        <StackPanel Spacing="10">
-                            <TextBlock Classes="h3" Text="Топ-10 альбомів за продажами"/>
-                            <ItemsControl ItemsSource="{Binding TopSelling}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="m:Product">
-                                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,6">
-                                            <StackPanel Grid.Column="0" Spacing="2">
-                                                <TextBlock Text="{Binding Album.Title}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Album.Artist.Name}" Classes="muted"/>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding SalesCount, Converter={StaticResource UkPlural}, ConverterParameter='продаж|продажі|продажів'}"
-                                                       Classes="muted"
-                                                       VerticalAlignment="Center" Margin="0,0,20,0"/>
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
-                                                       Foreground="{StaticResource AccentBrush}"
-                                                       VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
+                    </Grid>
                 </StackPanel>
-            </TabItem>
+            </Border>
 
-            <!-- ============ Користувачі ============ -->
-            <TabItem Header="Користувачі">
-                <Border Background="{StaticResource BgElevatedBrush}"
-                        CornerRadius="{StaticResource RadiusM}" Padding="14" Margin="0,14,0,0">
-                    <ItemsControl ItemsSource="{Binding Users}">
+            <!-- Top-10: per-album aggregate (units + realised revenue across LP/CD) -->
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="20,16">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="h3" Text="Топ-10 альбомів за продажами"/>
+                    <Grid ColumnDefinitions="36,*,120,130" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="1" Classes="col-head" Text="АЛЬБОМ"/>
+                        <TextBlock Grid.Column="2" Classes="col-head" Text="ПРОДАЖІ" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="3" Classes="col-head" Text="ВИРУЧКА" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding TopSelling}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="m:User">
-                                <Grid ColumnDefinitions="50,180,*,150,Auto" Margin="0,6" VerticalAlignment="Center">
-                                    <TextBlock Grid.Column="0" Text="{Binding Id}" Classes="muted"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Username}" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding Email}" Classes="muted"/>
-                                    <ComboBox Grid.Column="3"
-                                              ItemsSource="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).UserRoles}"
-                                              SelectedItem="{Binding Role}"
-                                              HorizontalAlignment="Stretch"/>
-                                    <Button Grid.Column="4" Classes="ghost" Content="Застосувати"
-                                            Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ChangeUserRoleCommand}"
-                                            CommandParameter="{Binding}"/>
+                            <DataTemplate DataType="vm:TopSellingRow">
+                                <Grid ColumnDefinitions="36,*,120,130" Margin="0,5">
+                                    <TextBlock Grid.Column="0" Text="{Binding Rank}"
+                                               Classes="muted" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{Binding AlbumTitle}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding ArtistName}" Classes="muted" FontSize="11"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Units, Converter={StaticResource UkPlural}, ConverterParameter='продаж|продажі|продажів'}"
+                                               Classes="muted" VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"/>
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding Revenue, StringFormat='{}{0:#,0} ₴'}"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <TextBlock Text="Ще немає виконаних продажів." Classes="muted"
+                               IsVisible="{Binding !TopSelling.Count}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ============ Товари ============ -->
+        <StackPanel Spacing="12" IsVisible="{Binding IsSectionProducts}">
+
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="10">
+                <Border Grid.Column="0" Classes="search-pill" Width="340" Height="38" Padding="14,0,8,0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <Path Grid.Column="0" Classes="icon sm" Data="{StaticResource IconSearch}"
+                              VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" Classes="bare" MinHeight="0"
+                                 Text="{Binding ProductSearch}"
+                                 PlaceholderText="Альбом, виконавець або лейбл"
+                                 VerticalAlignment="Center"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="2" Classes="icon" Width="24" Height="24"
+                                ToolTip.Tip="Очистити пошук" VerticalAlignment="Center"
+                                IsVisible="{Binding ProductSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Command="{Binding ClearProductSearchCommand}">
+                            <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+                        </Button>
+                    </Grid>
                 </Border>
-            </TabItem>
-        </TabControl>
+                <TextBlock Grid.Column="1" Text="{Binding ProductCountLabel}" Classes="muted"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="3" Classes="ghost" Content="Експорт у Excel"
+                        VerticalAlignment="Center"
+                        Command="{Binding ExportProductsExcelCommand}"/>
+                <Button Grid.Column="4" Classes="primary" Content="+ Додати товар"
+                        Command="{Binding AddProductCommand}"/>
+            </Grid>
+
+            <!-- State filter: makes deactivated products findable (and restorable) -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="chip-tab" Content="Всі"
+                        Classes.active="{Binding IsProductFilterAll}"
+                        Command="{Binding FilterProductsCommand}" CommandParameter="All"/>
+                <Button Classes="chip-tab" Content="Активні"
+                        Classes.active="{Binding IsProductFilterActive}"
+                        Command="{Binding FilterProductsCommand}" CommandParameter="Active"/>
+                <Button Classes="chip-tab" Content="Неактивні"
+                        Classes.active="{Binding IsProductFilterInactive}"
+                        Command="{Binding FilterProductsCommand}" CommandParameter="Inactive"/>
+            </StackPanel>
+
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="0,4,0,8">
+                <StackPanel>
+                    <Grid ColumnDefinitions="48,*,76,100,90,104,190" Margin="16,10">
+                        <TextBlock Grid.Column="0" Classes="col-head" Text="ID"/>
+                        <TextBlock Grid.Column="1" Classes="col-head" Text="АЛЬБОМ"/>
+                        <TextBlock Grid.Column="2" Classes="col-head" Text="ФОРМАТ"/>
+                        <TextBlock Grid.Column="3" Classes="col-head" Text="ЦІНА" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="4" Classes="col-head" Text="ЗАЛИШОК" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="5" Classes="col-head" Text="СТАН" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Products}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AdminProductRow">
+                                <Border Classes="table-row"
+                                        Classes.inactive="{Binding !Product.IsActive}">
+                                    <Grid ColumnDefinitions="48,*,76,100,90,104,190" VerticalAlignment="Center">
+                                        <TextBlock Grid.Column="0" Text="{Binding Product.Id}" Classes="muted"
+                                                   VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Product.Album.Artist.Name}" Classes="muted" FontSize="11"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="2" Classes="chip" Padding="8,2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <TextBlock Classes="tiny" Text="{Binding Product.FormatBadge}"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding Product.Price, StringFormat='{}{0:#,0} ₴'}"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Text="{Binding Product.Stock, Converter={x:Static conv:StockLabelConverter.Instance}}"
+                                                   Classes="muted"
+                                                   Classes.danger="{Binding Product.Stock, Converter={x:Static conv:IntIsZeroConverter.Instance}}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5" Text="Активний" Classes="muted"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   IsVisible="{Binding Product.IsActive}"/>
+                                        <TextBlock Grid.Column="5" Text="Неактивний" Classes="danger"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   IsVisible="{Binding !Product.IsActive}"/>
+                                        <Panel Grid.Column="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="4"
+                                                        IsVisible="{Binding !IsConfirmingDeactivation}">
+                                                <Button Classes="icon" Width="32" Height="32"
+                                                        ToolTip.Tip="Редагувати"
+                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).EditProductCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Path Classes="icon" Data="{StaticResource IconEdit}"/>
+                                                </Button>
+                                                <Button Classes="icon" Width="32" Height="32"
+                                                        ToolTip.Tip="Деактивувати"
+                                                        IsVisible="{Binding Product.IsActive}"
+                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).RequestDeactivateProductCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Path Classes="icon" Data="{StaticResource IconTrash}"/>
+                                                </Button>
+                                                <Button Classes="icon" Width="32" Height="32"
+                                                        ToolTip.Tip="Активувати знову"
+                                                        IsVisible="{Binding !Product.IsActive}"
+                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ActivateProductCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Path Classes="icon" Data="{StaticResource IconRepeat}"/>
+                                                </Button>
+                                            </StackPanel>
+                                            <!-- Inline two-step confirmation replaces the icons -->
+                                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                                        IsVisible="{Binding IsConfirmingDeactivation}">
+                                                <TextBlock Text="Деактивувати?" Classes="muted"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Classes="ghost" Content="Так"
+                                                        Foreground="{StaticResource DangerBrush}"
+                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ConfirmDeactivateProductCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Classes="ghost" Content="Ні"
+                                                        Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).CancelDeactivateProductCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Panel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="16,14"
+                                IsVisible="{Binding HasNoProducts}">
+                        <TextBlock Text="Нічого не знайдено." Classes="muted" VerticalAlignment="Center"/>
+                        <Button Classes="link-inline" Content="Скинути пошук і фільтр"
+                                Command="{Binding ResetProductFiltersCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ============ Замовлення ============ -->
+        <StackPanel Spacing="12" IsVisible="{Binding IsSectionOrders}">
+
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="chip-tab" Content="Всі"
+                            Classes.active="{Binding IsOrderFilterAll}"
+                            Command="{Binding FilterOrdersCommand}" CommandParameter="All"/>
+                    <Button Classes="chip-tab" Content="Нові"
+                            Classes.active="{Binding IsOrderFilterNew}"
+                            Command="{Binding FilterOrdersCommand}" CommandParameter="New"/>
+                    <Button Classes="chip-tab" Content="В обробці"
+                            Classes.active="{Binding IsOrderFilterProcessing}"
+                            Command="{Binding FilterOrdersCommand}" CommandParameter="Processing"/>
+                    <Button Classes="chip-tab" Content="Виконані"
+                            Classes.active="{Binding IsOrderFilterCompleted}"
+                            Command="{Binding FilterOrdersCommand}" CommandParameter="Completed"/>
+                    <Button Classes="chip-tab" Content="Скасовані"
+                            Classes.active="{Binding IsOrderFilterCancelled}"
+                            Command="{Binding FilterOrdersCommand}" CommandParameter="Cancelled"/>
+                </StackPanel>
+                <Border Grid.Column="2" Classes="search-pill" Width="240" Height="38" Padding="14,0,8,0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <Path Grid.Column="0" Classes="icon sm" Data="{StaticResource IconSearch}"
+                              VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" Classes="bare" MinHeight="0"
+                                 Text="{Binding OrderSearch}"
+                                 PlaceholderText="№ або покупець"
+                                 VerticalAlignment="Center"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="2" Classes="icon" Width="24" Height="24"
+                                ToolTip.Tip="Очистити пошук" VerticalAlignment="Center"
+                                IsVisible="{Binding OrderSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Command="{Binding ClearOrderSearchCommand}">
+                            <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+                        </Button>
+                    </Grid>
+                </Border>
+                <Button Grid.Column="3" Classes="ghost" Content="Експорт у Excel"
+                        VerticalAlignment="Center"
+                        Command="{Binding ExportOrdersExcelCommand}"/>
+            </Grid>
+
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="0,4,0,8">
+                <StackPanel>
+                    <Grid ColumnDefinitions="70,110,*,120,190,36" Margin="16,10">
+                        <TextBlock Grid.Column="0" Classes="col-head" Text="№"/>
+                        <TextBlock Grid.Column="1" Classes="col-head" Text="ДАТА"/>
+                        <TextBlock Grid.Column="2" Classes="col-head" Text="ПОКУПЕЦЬ"/>
+                        <TextBlock Grid.Column="3" Classes="col-head" Text="СУМА" HorizontalAlignment="Right" Margin="0,0,12,0"/>
+                        <TextBlock Grid.Column="4" Classes="col-head" Text="СТАТУС"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding OrderRows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AdminOrderRow">
+                                <StackPanel>
+                                    <Border Classes="table-row">
+                                        <Grid ColumnDefinitions="70,110,*,120,190,36" VerticalAlignment="Center">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Order.Id, StringFormat='#{0}'}"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <!-- Date only — the exact time lives in the details panel,
+                                                 the freed width goes to the buyer column -->
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Order.CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                       Classes="muted" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Buyer}"
+                                                       Classes="muted" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding Order.TotalAmount, StringFormat='{}{0:#,0} ₴'}"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+                                            <!-- Picking a status saves immediately (toast confirms) -->
+                                            <ComboBox Grid.Column="4"
+                                                      ItemsSource="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).OrderStatuses}"
+                                                      SelectedItem="{Binding SelectedStatus}"
+                                                      HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={x:Static conv:OrderStatusToUkrainianConverter.Instance}}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <Button Grid.Column="5" Classes="icon expander" Width="32" Height="32"
+                                                    ToolTip.Tip="Деталі замовлення"
+                                                    Classes.open="{Binding IsExpanded}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ToggleOrderDetailsCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Path Classes="icon sm" Data="{StaticResource IconChevronDown}"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Inline details, directly under the toggled row -->
+                                    <Border Background="{StaticResource BgCardBrush}"
+                                            CornerRadius="{StaticResource RadiusM}"
+                                            Margin="16,4,16,12" Padding="16,12"
+                                            IsVisible="{Binding IsExpanded}">
+                                        <StackPanel Spacing="10">
+                                            <ItemsControl ItemsSource="{Binding Order.Items}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="m:OrderItem">
+                                                        <Grid ColumnDefinitions="*,60,60,110" Margin="0,3">
+                                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                                <TextBlock Text="{Binding AlbumTitle}" FontWeight="SemiBold"/>
+                                                                <TextBlock Text="{Binding ArtistName}" Classes="muted" FontSize="11"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1" Text="{Binding FormatLabel}"
+                                                                       Classes="muted" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2"
+                                                                       Text="{Binding Quantity, StringFormat='× {0}'}"
+                                                                       Classes="muted" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3"
+                                                                       Text="{Binding LineTotal, StringFormat='{}{0:#,0} ₴'}"
+                                                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <Border Height="1" Background="{StaticResource DividerSoftBrush}"/>
+
+                                            <!-- The row above already shows the total — no «Разом» duplicate.
+                                                 «Отримання» covers both pickup and delivery wording. -->
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Classes="muted"
+                                                           Text="{Binding Order.CreatedAt, StringFormat='Створено: {0:dd.MM.yyyy HH:mm}'}"/>
+                                                <TextBlock Classes="muted"
+                                                           Text="{Binding Order.ShippingAddress, StringFormat='Отримання: {0}'}"
+                                                           IsVisible="{Binding Order.ShippingAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Classes="muted"
+                                                           Text="{Binding Order.Comment, StringFormat='Коментар: {0}'}"
+                                                           IsVisible="{Binding Order.Comment, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="16,14"
+                                IsVisible="{Binding HasNoOrders}">
+                        <TextBlock Text="Немає замовлень, що відповідають фільтру чи пошуку."
+                                   Classes="muted" VerticalAlignment="Center"/>
+                        <Button Classes="link-inline" Content="Показати всі замовлення"
+                                Command="{Binding ResetOrderFiltersCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ============ Користувачі ============ -->
+        <StackPanel Spacing="12" IsVisible="{Binding IsSectionUsers}">
+            <Border Classes="search-pill" Width="280" Height="38" Padding="14,0,8,0"
+                    HorizontalAlignment="Left">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Path Grid.Column="0" Classes="icon sm" Data="{StaticResource IconSearch}"
+                          VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Classes="bare" MinHeight="0"
+                             Text="{Binding UserSearch}"
+                             PlaceholderText="Ім'я або email"
+                             VerticalAlignment="Center"
+                             VerticalContentAlignment="Center"/>
+                    <Button Grid.Column="2" Classes="icon" Width="24" Height="24"
+                            ToolTip.Tip="Очистити пошук" VerticalAlignment="Center"
+                            IsVisible="{Binding UserSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Command="{Binding ClearUserSearchCommand}">
+                        <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Background="{StaticResource BgElevatedBrush}"
+                    CornerRadius="{StaticResource RadiusM}" Padding="0,4,0,8">
+                <StackPanel>
+                    <Grid ColumnDefinitions="60,200,*,190,210" Margin="16,10">
+                        <TextBlock Grid.Column="0" Classes="col-head" Text="ID"/>
+                        <TextBlock Grid.Column="1" Classes="col-head" Text="ІМ'Я"/>
+                        <TextBlock Grid.Column="2" Classes="col-head" Text="EMAIL"/>
+                        <TextBlock Grid.Column="3" Classes="col-head" Text="РОЛЬ"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Users}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AdminUserRow">
+                                <Border Classes="table-row">
+                                    <Grid ColumnDefinitions="60,200,*,190,210" VerticalAlignment="Center">
+                                        <TextBlock Grid.Column="0" Text="{Binding User.Id}" Classes="muted"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding User.Username}"
+                                                   FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding User.Email}" Classes="muted"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   Margin="0,0,12,0"/>
+                                        <ComboBox Grid.Column="3"
+                                                  ItemsSource="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).UserRoles}"
+                                                  SelectedItem="{Binding SelectedRole}"
+                                                  HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={x:Static conv:UserRoleToUkrainianConverter.Instance}}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                    IsVisible="{Binding HasUnsavedRole}">
+                                            <Button Classes="ghost" Content="Скасувати"
+                                                    Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).RevertUserRoleCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Classes="primary" Content="Зберегти"
+                                                    Command="{Binding $parent[ItemsControl].((vm:AdminViewModel)DataContext).ChangeUserRoleCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
     </StackPanel>
 
     <!-- Inline product editor — replaces the old modal ProductEditWindow. -->
     <Border Margin="32,24,32,32" IsVisible="{Binding IsEditingProduct}">
         <views:ProductEditView DataContext="{Binding EditingProduct}"/>
+    </Border>
+
+    <!-- Floating status toast: overlays the page (no layout jump). Success
+         auto-hides after 5 s, errors stay until dismissed. -->
+    <Border x:Name="StatusToast" Classes="toast" Classes.error="{Binding IsStatusError}"
+            MaxWidth="520" Margin="24"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            Background="{StaticResource BgElevatedBrush}"
+            BorderThickness="3,0,0,0"
+            CornerRadius="{StaticResource RadiusS}" Padding="14,10"
+            BoxShadow="0 4 16 0 #66000000"
+            IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <Button Grid.Column="1" Classes="icon" Width="24" Height="24"
+                    Command="{Binding DismissStatusCommand}">
+                <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+            </Button>
+        </Grid>
     </Border>
 
     </Panel>

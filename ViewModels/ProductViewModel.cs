@@ -144,11 +144,13 @@ public partial class ProductViewModel : ViewModelBase
             && _catalog.IsAlbumPurchased(Product.AlbumId, user.Id);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanAddToCart))]
     private void AddToCart()
     {
         if (Product is not null) _cart.Add(Product);
     }
+
+    private bool CanAddToCart() => Product is { Stock: > 0 };
 
     [RelayCommand]
     private void PlaySample(Track track) => _player.PlaySample(track);
@@ -200,6 +202,7 @@ public partial class ProductViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasCover));
         OnPropertyChanged(nameof(IsVinylSelected));
         OnPropertyChanged(nameof(IsCdSelected));
+        AddToCartCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]

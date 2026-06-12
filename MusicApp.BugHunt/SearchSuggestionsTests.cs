@@ -26,7 +26,7 @@ public class SearchSuggestionsTests
             vm.SearchQuery = "utop";
             vm.Suggestions.Clear();
             foreach (var hit in search.Autocomplete("utop"))
-                vm.Suggestions.Add(hit);
+                vm.Suggestions.Add(new SuggestionItemViewModel(hit));
             vm.IsAutocompleteOpen = vm.Suggestions.Count > 0;
         });
     }

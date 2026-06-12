@@ -359,6 +359,7 @@ internal static class SampleData
         foreach (var album in albums)
         {
             var rnd = new Random(album.Id * 17);
+            var (vinylPrice, cdPrice, deluxeVinyl) = PricingFor(album.Id);
             // Aggregates (Rating/ReviewCount/SalesCount) are maintained by SQLite
             // triggers — leave them at the default 0; the triggers will reconcile
             // when Reviews and OrderItems get inserted below.
@@ -368,10 +369,10 @@ internal static class SampleData
                 AlbumId = album.Id,
                 Album = album,
                 Format = ProductFormat.Vinyl,
-                Price = 450 + rnd.Next(0, 250),
+                Price = vinylPrice,
                 Stock = rnd.Next(0, 8),
                 ReleaseYear = album.Year,
-                Label = "Hi-Fidelity Records",
+                Label = deluxeVinyl ? "Hi-Fidelity Records · Deluxe" : "Hi-Fidelity Records",
                 IsActive = true
             });
             products.Add(new Product
@@ -380,7 +381,7 @@ internal static class SampleData
                 AlbumId = album.Id,
                 Album = album,
                 Format = ProductFormat.CD,
-                Price = 220 + rnd.Next(0, 180),
+                Price = cdPrice,
                 Stock = rnd.Next(0, 14),
                 ReleaseYear = album.Year,
                 Label = "Hi-Fidelity Records",
@@ -388,19 +389,12 @@ internal static class SampleData
             });
         }
 
-        // Hand-curated reviews for a few canonical products.
-        var reviews = new List<Review>
-        {
-            new() { Id = 1, ProductId = 1, UserId = 1, UserDisplayName = "Іван П.",
-                    Rating = 5, CreatedAt = new DateTime(2026, 4, 12),
-                    Text = "Yeezus на вініли пресовано якісно — бас б'є саме так, як треба." },
-            new() { Id = 2, ProductId = 19, UserId = 2, UserDisplayName = "Олена С.",
-                    Rating = 5, CreatedAt = new DateTime(2026, 4, 3),
-                    Text = "Blonde у форматі LP — обкладинка з вологою матовою фактурою, звук теплий." },
-            new() { Id = 3, ProductId = 33, UserId = 2, UserDisplayName = "Roman K.",
-                    Rating = 5, CreatedAt = new DateTime(2026, 3, 27),
-                    Text = "Kind of Blue MFSL — еталон для тих, хто щойно зібрав систему." }
-        };
+        // Catalog reviews are seeded in DbSeeder.SeedTestActivity instead: it
+        // resolves products by album title and attributes each review to a real
+        // seeded customer. Hardcoded ProductId/UserId pairs here drifted whenever
+        // the catalog changed and leaked foreign-looking reviews into the
+        // admin/demo profiles («Мої відгуки» showed other people's texts).
+        var reviews = new List<Review>();
 
         var orders = new List<Order>
         {
@@ -434,6 +428,22 @@ internal static class SampleData
         };
 
         return (genres, artists, albums, products, reviews, orders, albumGenres);
+    }
+
+    // Demo price grid, deterministic by AlbumId so reseeding (and the DbSeeder
+    // pricing backfill) always lands on the same numbers. Three tiers so every
+    // catalog price bucket is populated: CDs are the budget shelf, standard
+    // vinyl the middle one, and roughly every third album carries a deluxe
+    // pressing (box set / colored LP) priced into the premium range.
+    public static (decimal VinylPrice, decimal CdPrice, bool DeluxeVinyl) PricingFor(int albumId)
+    {
+        var rnd = new Random(albumId * 17);
+        var deluxe = rnd.Next(0, 3) == 0;
+        decimal vinyl = deluxe
+            ? 1200 + rnd.Next(0, 27) * 50   // 1200–2500 ₴, крок 50
+            : 600 + rnd.Next(0, 10) * 50;   // 600–1050 ₴, крок 50
+        decimal cd = 250 + rnd.Next(0, 8) * 25; // 250–425 ₴, крок 25
+        return (vinyl, cd, deluxe);
     }
 
     private static OrderItem BuildOrderItem(int id, int orderId, Product product, int quantity)

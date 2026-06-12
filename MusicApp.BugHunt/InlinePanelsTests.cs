@@ -134,7 +134,7 @@ public class InlinePanelsTests
 
         Assert.True(admin.IsEditingProduct);
         Assert.True(admin.EditingProduct!.IsEditMode);
-        Assert.Equal(product.Price, admin.EditingProduct!.Price);
+        Assert.Equal(product.Product.Price, admin.EditingProduct!.Price);
 
         admin.EditingProduct!.CancelCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();

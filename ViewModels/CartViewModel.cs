@@ -27,6 +27,7 @@ public partial class CartViewModel : ViewModelBase
     [ObservableProperty] private string? _flashMessage;
     [ObservableProperty] private bool _isGuest;
     [ObservableProperty] private bool _hasSuggestions;
+    [ObservableProperty] private bool _hasWishlistItems;
 
     // Checkout form: pickup from one of the stores, or Nova Poshta delivery.
     [ObservableProperty] private bool _isPickup = true;
@@ -69,13 +70,18 @@ public partial class CartViewModel : ViewModelBase
         _catalog = catalog;
         Items = cart.Items;
         Suggestions = new ObservableCollection<Product>();
+        WishlistItems = new ObservableCollection<Product>();
         cart.CartChanged += (_, _) => Refresh();
         auth.CurrentUserChanged += (_, _) => { SetStage(Stage.Cart); Refresh(); };
+        catalog.WishlistChanged += (_, _) => ReloadWishlist();
         Refresh();
     }
 
     public ObservableCollection<CartItem> Items { get; }
     public ObservableCollection<Product> Suggestions { get; }
+    public ObservableCollection<Product> WishlistItems { get; }
+
+    public string WishlistTitle => $"Збережене ({WishlistItems.Count})";
 
     public bool ShowCart => _stage == Stage.Cart;
     public bool ShowCheckout => _stage == Stage.Checkout;
@@ -106,6 +112,18 @@ public partial class CartViewModel : ViewModelBase
 
         RebuildSuggestions();
         OnPropertyChanged(nameof(SuggestionsTitle));
+        ReloadWishlist();
+    }
+
+    private void ReloadWishlist()
+    {
+        WishlistItems.Clear();
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        if (userId > 0)
+            foreach (var p in _catalog.GetWishlistProducts(userId))
+                WishlistItems.Add(p);
+        HasWishlistItems = WishlistItems.Count > 0;
+        OnPropertyChanged(nameof(WishlistTitle));
     }
 
     // «Купіть також»: albums by the same artists first, then same-genre, then
@@ -161,6 +179,31 @@ public partial class CartViewModel : ViewModelBase
 
     [RelayCommand]
     private void OpenSuggestion(Product? product)
+    {
+        if (product is not null) _nav.NavigateTo(NavTarget.Product, product.Id);
+    }
+
+    // «До кошика» on a saved item moves it: into the cart, out of the wishlist
+    // (the WishlistChanged event then refreshes the section).
+    [RelayCommand]
+    private void MoveWishlistItemToCart(Product? product)
+    {
+        if (product is null || product.Stock <= 0) return;
+        _cart.Add(product);
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        if (userId > 0) _catalog.RemoveFromWishlist(userId, product.Id);
+    }
+
+    [RelayCommand]
+    private void RemoveWishlistItem(Product? product)
+    {
+        if (product is null) return;
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        if (userId > 0) _catalog.RemoveFromWishlist(userId, product.Id);
+    }
+
+    [RelayCommand]
+    private void OpenWishlistItem(Product? product)
     {
         if (product is not null) _nav.NavigateTo(NavTarget.Product, product.Id);
     }
@@ -229,11 +272,13 @@ public partial class CartViewModel : ViewModelBase
         SetStage(Stage.Success);
     }
 
+    // Orders live in the profile (its first tab) — there is no standalone
+    // orders page anymore.
     [RelayCommand]
     private void GoToOrders()
     {
         SetStage(Stage.Cart);
-        _nav.NavigateTo(NavTarget.Orders);
+        _nav.NavigateTo(NavTarget.Profile);
     }
 
     [RelayCommand]

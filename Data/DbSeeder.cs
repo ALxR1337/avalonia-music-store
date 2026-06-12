@@ -28,6 +28,7 @@ public static class DbSeeder
         // whose tables predate them.
         BackfillArtistPhotos(db);
         BackfillAlbumCovers(db);
+        BackfillSeedPricing(db);
 
         // Demo activity (likes, playlists, cart, wishlist, saved searches, extra
         // orders) so every customer-facing feature and the admin analytics have
@@ -222,6 +223,14 @@ public static class DbSeeder
             "Ностальгія у чистому вигляді, бас качає.");
         AddReview("Illmatic", ProductFormat.Vinyl, oleh.Id, "Олег К.", 5, new DateTime(2026, 4, 9),
             "Десять ідеальних треків, нічого зайвого.");
+        // Moved out of SampleData's hand-curated list: there they carried
+        // hardcoded ProductId/UserId pairs that drifted after catalog edits.
+        AddReview("Yeezus", ProductFormat.Vinyl, maryna.Id, "Марина О.", 5, new DateTime(2026, 4, 12),
+            "Yeezus на вінілі пресовано якісно — бас б'є саме так, як треба.");
+        AddReview("Blonde", ProductFormat.Vinyl, anna.Id, "Анна Л.", 5, new DateTime(2026, 4, 3),
+            "Blonde у форматі LP — обкладинка з вологою матовою фактурою, звук теплий.");
+        AddReview("Kind of Blue", ProductFormat.Vinyl, oleh.Id, "Олег К.", 5, new DateTime(2026, 3, 27),
+            "Kind of Blue MFSL — еталон для тих, хто щойно зібрав систему.");
 
         // --- demo customer: liked albums ---
         var likedAlbumTitles = new[] { "Yeezus", "Blonde", "To Pimp", "Dark Side",
@@ -294,16 +303,18 @@ public static class DbSeeder
                 AddedAt = new DateTime(2026, 5, 25) });
         }
 
-        // --- demo customer: saved searches (DSL strings the search parser understands) ---
-        foreach (var query in new[]
+        // --- demo customer: saved searches (DSL strings the search parser understands).
+        // Names are human-readable — the raw DSL stays in QueryJson and shows up
+        // as the row's subtitle, like queries saved through the UI. ---
+        foreach (var (name, query) in new[]
                  {
-                     "жанр:\"Jazz\"",
-                     "виконавець:\"Pink Floyd\" формат:lp",
-                     "рейтинг:>=4",
-                     "жанр:\"Electronic\" рік:1990..2005",
+                     ("Джаз", "жанр:\"Jazz\""),
+                     ("Pink Floyd на вінілі", "виконавець:\"Pink Floyd\" формат:lp"),
+                     ("Рейтинг 4+", "рейтинг:>=4"),
+                     ("Електроніка 1990–2005", "жанр:\"Electronic\" рік:1990..2005"),
                  })
         {
-            db.SavedSearches.Add(new SavedSearch { UserId = DemoUserId, Name = query,
+            db.SavedSearches.Add(new SavedSearch { UserId = DemoUserId, Name = name,
                 QueryJson = query, NotifyOnNew = false, CreatedAt = new DateTime(2026, 5, 24) });
         }
 
@@ -384,6 +395,41 @@ public static class DbSeeder
 
         if (changed)
             db.SaveChanges();
+    }
+
+    // Re-prices the seeded catalog on databases that still carry the legacy demo
+    // pricing (vinyl 450–699 ₴, CD 220–399 ₴), under which the catalog's premium
+    // price tier (1000+ ₴) was unreachable. Detection is conservative: it fires
+    // only while EVERY seed-labelled product still sits inside the legacy bands,
+    // so a single admin-edited price (which almost certainly leaves those bands)
+    // disables the rewrite. Idempotent regardless: PricingFor is deterministic
+    // by AlbumId, so a second pass writes back the identical numbers.
+    private static void BackfillSeedPricing(MusicStoreDbContext db)
+    {
+        var seeded = db.Products
+            .Where(p => p.Label != null && p.Label.StartsWith("Hi-Fidelity Records"))
+            .ToList();
+        if (seeded.Count == 0) return;
+
+        var legacy = seeded.All(p => p.Format == ProductFormat.Vinyl
+            ? p.PriceCents is >= 450_00 and <= 699_00
+            : p.PriceCents is >= 220_00 and <= 399_00);
+        if (!legacy) return;
+
+        foreach (var p in seeded)
+        {
+            var (vinyl, cd, deluxe) = SampleData.PricingFor(p.AlbumId);
+            if (p.Format == ProductFormat.Vinyl)
+            {
+                p.Price = vinyl;
+                p.Label = deluxe ? "Hi-Fidelity Records · Deluxe" : "Hi-Fidelity Records";
+            }
+            else
+            {
+                p.Price = cd;
+            }
+        }
+        db.SaveChanges();
     }
 
     // Wipes the DB when an outdated seed is detected so the current SampleData can populate.

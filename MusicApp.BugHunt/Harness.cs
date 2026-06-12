@@ -51,6 +51,10 @@ public sealed class Harness
             Trace("fts5");
         }
 
+        // Mirrors App.axaml.cs: declared before the nav factories so the Player
+        // factory's requestLogin closure can capture the shell VM built below.
+        MainWindowViewModel? vm = null;
+
         var nav = new NavigationService();
         var auth = new AuthService(dbFactory);
         var catalog = new CatalogService(dbFactory);
@@ -71,13 +75,12 @@ public sealed class Harness
         nav.Register(NavTarget.Cart,
             _ => new CartViewModel(cart, nav, auth, catalog));
         nav.Register(NavTarget.Profile,
-            _ => new ProfileViewModel(auth, catalog, search, nav));
-        nav.Register(NavTarget.Orders,
-            _ => new OrdersViewModel(catalog, auth));
+            _ => new ProfileViewModel(auth, catalog, search, nav, cart));
         nav.Register(NavTarget.Player,
-            p => new PlayerViewModel(player, catalog, auth, likes, nav, files, p as MusicApp.Models.Album));
+            p => new PlayerViewModel(player, catalog, auth, likes, nav, files, p as MusicApp.Models.Album,
+                requestLogin: () => vm?.ShowLogin()));
         nav.Register(NavTarget.Admin,
-            _ => new AdminViewModel(catalog, files));
+            _ => new AdminViewModel(catalog, files, auth));
 
         if (!string.IsNullOrEmpty(loginAs))
             auth.TryLogin(loginAs, password ?? string.Empty);
@@ -92,7 +95,7 @@ public sealed class Harness
         player.Volume = 0;
 
         Trace("vm-build");
-        var vm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
+        vm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
         Trace("vm-ready");
         var window = new MainWindow { DataContext = vm };
         Trace("window-ctor");

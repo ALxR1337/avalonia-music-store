@@ -2,8 +2,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MusicApp.ViewModels"
              xmlns:m="using:MusicApp.Models"
+             xmlns:conv="using:MusicApp.Converters"
              x:Class="MusicApp.Views.CatalogView"
              x:DataType="vm:CatalogViewModel">
+
+    <UserControl.Styles>
+        <!-- Floating toast (same recipe as AdminView's status toast) -->
+        <Style Selector="Border.toast">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
 
     <StackPanel Margin="32,24,32,32" Spacing="32">
 
@@ -14,12 +24,11 @@
                     <Border Classes="hero-badge">
                         <TextBlock Text="ВІТАЄМО"/>
                     </Border>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Classes="hero-title" Text="Музика, яка звучить "/>
-                        <TextBlock Classes="hero-title accent" Text="наживо"/>
-                    </StackPanel>
+                    <!-- One TextBlock with inline runs, not a horizontal StackPanel:
+                         the headline must be able to wrap at narrow widths. -->
+                    <TextBlock Classes="hero-title" TextWrapping="Wrap"><Run Text="Музика, яка звучить "/><Run Text="наживо" Foreground="{StaticResource AccentBrush}"/></TextBlock>
                     <TextBlock Classes="hero-subtitle"
-                               Text="Сотні платівок і компакт-дисків — переслухайте перед покупкою"/>
+                               Text="Платівки та компакт-диски — переслухайте перед покупкою"/>
                 </StackPanel>
                 <Button Grid.Column="1" Classes="primary"
                         VerticalAlignment="Center" Margin="24,0,0,0"
@@ -28,14 +37,16 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}"
                               Width="14" Height="14" Stretch="Uniform"/>
-                        <TextBlock Text="Слухати зараз" FontWeight="Bold" Foreground="{StaticResource OnAccentBrush}"/>
+                        <TextBlock Text="{Binding FeaturedTitle}" FontWeight="Bold"
+                                   Foreground="{StaticResource OnAccentBrush}"
+                                   MaxWidth="260" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Button>
             </Grid>
         </Border>
 
         <!-- Genres row -->
-        <StackPanel Spacing="14">
+        <StackPanel Spacing="14" IsVisible="{Binding HasGenres}">
             <TextBlock Classes="h2" Text="Перегляд за жанрами"/>
             <Grid Classes="scroll-row">
                 <ScrollViewer x:Name="GenreScroller"
@@ -51,6 +62,7 @@
                             <DataTemplate DataType="vm:GenreTile">
                                 <Button Classes="genre-tile"
                                         Width="200" Margin="0,0,14,0"
+                                        AutomationProperties.Name="{Binding Name}"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenGenreCommand}"
                                         CommandParameter="{Binding Genre}">
                                     <Border Classes="genre-card"
@@ -69,18 +81,35 @@
                                                    IsVisible="{Binding HasCover}"
                                                    Stretch="UniformToFill"/>
 
+                                            <!-- Full-width scrim: the label must stay readable on any
+                                                 cover, even where the accent triangle has thinned out. -->
+                                            <Border Height="74" VerticalAlignment="Bottom"
+                                                    IsHitTestVisible="False">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                                                        <GradientStop Offset="0" Color="#00000000"/>
+                                                        <GradientStop Offset="1" Color="#AA000000"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+
                                             <Path Fill="{Binding Genre, Converter={StaticResource GenreToBrush}, ConverterParameter=accent}"
                                                   Stretch="None"
                                                   Data="M 0,200 L 175,200 L 0,87.5 Z"
                                                   HorizontalAlignment="Left"
                                                   VerticalAlignment="Bottom"/>
 
-                                            <TextBlock Text="{Binding Name}"
-                                                       FontWeight="Bold" FontSize="20"
-                                                       Foreground="White"
-                                                       HorizontalAlignment="Left"
-                                                       VerticalAlignment="Bottom"
-                                                       Margin="15,0,0,12"/>
+                                            <StackPanel HorizontalAlignment="Left"
+                                                        VerticalAlignment="Bottom"
+                                                        Margin="15,0,15,10" Spacing="1">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="Bold" FontSize="20"
+                                                           Foreground="White"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding CountLabel}"
+                                                           FontSize="11"
+                                                           Foreground="#CCFFFFFF"/>
+                                            </StackPanel>
 
                                             <!-- Hover accent frame: overlaid on top so the 2px ring
                                                  never deflates the content rect and shrinks the cover -->
@@ -105,8 +134,8 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#FF121212"/>
-                            <GradientStop Offset="1" Color="#00121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBase}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBaseTransparent}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -118,8 +147,8 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#00121212"/>
-                            <GradientStop Offset="1" Color="#FF121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBaseTransparent}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBase}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -129,6 +158,7 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         Margin="-8,76,0,0"
+                        AutomationProperties.Name="Прокрутити вліво"
                         Click="OnGenreScrollLeft">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronLeft}"
@@ -146,6 +176,7 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         Margin="0,76,-8,0"
+                        AutomationProperties.Name="Прокрутити вправо"
                         Click="OnGenreScrollRight">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronRight}"
@@ -162,7 +193,7 @@
         </StackPanel>
 
         <!-- Artists -->
-        <StackPanel Spacing="14">
+        <StackPanel Spacing="14" IsVisible="{Binding HasArtists}">
             <TextBlock Classes="h2" Text="Виконавці"/>
             <Grid Classes="scroll-row">
                 <ScrollViewer x:Name="ArtistScroller"
@@ -178,6 +209,7 @@
                             <DataTemplate DataType="m:Artist">
                                 <Button Classes="artist-tile"
                                         Width="150" Margin="0,0,18,0"
+                                        AutomationProperties.Name="{Binding Name}"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenArtistCommand}"
                                         CommandParameter="{Binding}">
                                     <StackPanel Spacing="12">
@@ -226,8 +258,8 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#FF121212"/>
-                            <GradientStop Offset="1" Color="#00121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBase}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBaseTransparent}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -239,8 +271,8 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#00121212"/>
-                            <GradientStop Offset="1" Color="#FF121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBaseTransparent}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBase}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -250,6 +282,7 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         Margin="-8,41,0,0"
+                        AutomationProperties.Name="Прокрутити вліво"
                         Click="OnArtistScrollLeft">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronLeft}"
@@ -267,6 +300,7 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         Margin="0,41,-8,0"
+                        AutomationProperties.Name="Прокрутити вправо"
                         Click="OnArtistScrollRight">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronRight}"
@@ -283,8 +317,8 @@
         </StackPanel>
 
         <!-- Browse shortcuts: price ranges + high rating, side by side -->
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="32">
-            <StackPanel Grid.Column="0" Spacing="14">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="32" IsVisible="{Binding HasShortcuts}">
+            <StackPanel Grid.Column="0" Spacing="14" IsVisible="{Binding HasPriceRanges}">
                 <TextBlock Classes="h2" Text="За ціною"/>
                 <ItemsControl ItemsSource="{Binding PriceRanges}">
                     <ItemsControl.ItemsPanel>
@@ -309,7 +343,7 @@
                 </ItemsControl>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Spacing="14">
+            <StackPanel Grid.Column="1" Spacing="14" IsVisible="{Binding HasRatingShortcuts}">
                 <TextBlock Classes="h2" Text="Високий рейтинг"/>
                 <ItemsControl ItemsSource="{Binding RatingShortcuts}">
                     <ItemsControl.ItemsPanel>
@@ -340,11 +374,13 @@
         </Grid>
 
         <!-- New arrivals -->
-        <StackPanel Spacing="14">
+        <StackPanel Spacing="14" IsVisible="{Binding HasNewArrivals}">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Classes="h2" Text="Нові надходження"/>
+                <!-- "Релізи", not "надходження": the shelf sorts by release year,
+                     there is no "added to store" date to honestly rank by. -->
+                <TextBlock Grid.Column="0" Classes="h2" Text="Нові релізи"/>
                 <!-- Empty query → search page listing the full catalogue -->
-                <Button Grid.Column="1" Classes="link-inline" Content="Показати всі →"
+                <Button Grid.Column="1" Classes="link-inline" Content="Увесь каталог →"
                         VerticalAlignment="Bottom"
                         Command="{Binding OpenSearchCommand}"
                         CommandParameter=""/>
@@ -367,16 +403,19 @@
                                      the pointer event handled), so they keep their own actions. -->
                                 <Button Classes="album-card" Width="200" Margin="0,0,14,0"
                                         VerticalAlignment="Top"
+                                        AutomationProperties.Name="{Binding Album.Title}"
                                         Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
                                         CommandParameter="{Binding PrimaryProduct}">
                                     <Button.ContextFlyout>
                                         <MenuFlyout>
                                             <MenuItem Header="Додати LP в кошик"
                                                       IsVisible="{Binding HasVinyl}"
+                                                      IsEnabled="{Binding Vinyl.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
                                                       Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
                                                       CommandParameter="{Binding Vinyl}"/>
                                             <MenuItem Header="Додати CD в кошик"
                                                       IsVisible="{Binding HasCd}"
+                                                      IsEnabled="{Binding Cd.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
                                                       Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
                                                       CommandParameter="{Binding Cd}"/>
                                             <MenuItem Header="Прослухати семпл"
@@ -405,6 +444,7 @@
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Bottom"
                                                     Margin="0,0,6,6"
+                                                    AutomationProperties.Name="Прослухати семпл"
                                                     Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).QuickPreviewCommand}"
                                                     CommandParameter="{Binding PrimaryProduct}">
                                                 <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
@@ -421,14 +461,20 @@
                                                        Text="{Binding Album.Artist.Name}"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
+                                        <!-- Price rows are the card's buy action (the card itself opens
+                                             the album page): cart icon advertises it, zero stock disables
+                                             the row and says so instead of looking identical. -->
                                         <StackPanel Spacing="4">
                                             <Button Classes="ghost"
                                                     Padding="6,4" HorizontalContentAlignment="Stretch"
                                                     HorizontalAlignment="Stretch"
                                                     IsVisible="{Binding HasVinyl}"
-                                                    Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                                    IsEnabled="{Binding Vinyl.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
+                                                    ToolTip.Tip="Додати в кошик"
+                                                    AutomationProperties.Name="Додати LP в кошик"
+                                                    Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
                                                     CommandParameter="{Binding Vinyl}">
-                                                <Grid ColumnDefinitions="Auto,*">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
                                                     <Border Grid.Column="0" Classes="chip" Padding="6,2"
                                                             Margin="0,0,8,0">
                                                         <TextBlock Text="LP" FontSize="11"
@@ -439,15 +485,28 @@
                                                                FontWeight="Bold"
                                                                Foreground="{StaticResource AccentBrush}"
                                                                VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="немає"
+                                                               Classes="muted" FontSize="11"
+                                                               VerticalAlignment="Center" Margin="8,0,2,0"
+                                                               IsVisible="{Binding Vinyl.Stock, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
+                                                    <Path Grid.Column="2" Data="{StaticResource IconCart}"
+                                                          Stroke="{StaticResource FgSecondaryBrush}"
+                                                          StrokeThickness="1.8" Fill="Transparent"
+                                                          Width="15" Height="15" Stretch="Uniform"
+                                                          VerticalAlignment="Center" Margin="8,0,2,0"
+                                                          IsVisible="{Binding Vinyl.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"/>
                                                 </Grid>
                                             </Button>
                                             <Button Classes="ghost"
                                                     Padding="6,4" HorizontalContentAlignment="Stretch"
                                                     HorizontalAlignment="Stretch"
                                                     IsVisible="{Binding HasCd}"
-                                                    Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).OpenProductCommand}"
+                                                    IsEnabled="{Binding Cd.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"
+                                                    ToolTip.Tip="Додати в кошик"
+                                                    AutomationProperties.Name="Додати CD в кошик"
+                                                    Command="{Binding $parent[ItemsControl].((vm:CatalogViewModel)DataContext).AddToCartCommand}"
                                                     CommandParameter="{Binding Cd}">
-                                                <Grid ColumnDefinitions="Auto,*">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
                                                     <Border Grid.Column="0" Classes="chip" Padding="6,2"
                                                             Margin="0,0,8,0">
                                                         <TextBlock Text="CD" FontSize="11"
@@ -458,6 +517,16 @@
                                                                FontWeight="Bold"
                                                                Foreground="{StaticResource AccentBrush}"
                                                                VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="немає"
+                                                               Classes="muted" FontSize="11"
+                                                               VerticalAlignment="Center" Margin="8,0,2,0"
+                                                               IsVisible="{Binding Cd.Stock, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
+                                                    <Path Grid.Column="2" Data="{StaticResource IconCart}"
+                                                          Stroke="{StaticResource FgSecondaryBrush}"
+                                                          StrokeThickness="1.8" Fill="Transparent"
+                                                          Width="15" Height="15" Stretch="Uniform"
+                                                          VerticalAlignment="Center" Margin="8,0,2,0"
+                                                          IsVisible="{Binding Cd.Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"/>
                                                 </Grid>
                                             </Button>
                                         </StackPanel>
@@ -477,8 +546,8 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#FF121212"/>
-                            <GradientStop Offset="1" Color="#00121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBase}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBaseTransparent}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -490,17 +559,20 @@
                         IsHitTestVisible="False">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                            <GradientStop Offset="0" Color="#00121212"/>
-                            <GradientStop Offset="1" Color="#FF121212"/>
+                            <GradientStop Offset="0" Color="{StaticResource BgBaseTransparent}"/>
+                            <GradientStop Offset="1" Color="{StaticResource BgBase}"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
 
+                <!-- 62 = cover centre (172/2) minus half the 48px chevron — the
+                     genre/artist rows centre on their tiles the same way. -->
                 <Button x:Name="NewArrivalsScrollLeft"
                         Classes="scroll-nav"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        Margin="-8,76,0,0"
+                        Margin="-8,62,0,0"
+                        AutomationProperties.Name="Прокрутити вліво"
                         Click="OnNewArrivalsScrollLeft">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronLeft}"
@@ -517,7 +589,8 @@
                         Classes="scroll-nav"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
-                        Margin="0,76,-8,0"
+                        Margin="0,62,-8,0"
+                        AutomationProperties.Name="Прокрутити вправо"
                         Click="OnNewArrivalsScrollRight">
                     <Border Classes="scroll-nav-circle">
                         <Path Data="{StaticResource IconChevronRight}"
@@ -534,4 +607,26 @@
         </StackPanel>
 
     </StackPanel>
+
+    <!-- Floating toast: overlays the page (no layout jump), pinned to the
+         visible viewport from code-behind, auto-hides after 4 s. -->
+    <Border x:Name="CatalogToast" Classes="toast"
+            MaxWidth="520" Margin="24"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            Background="{StaticResource BgElevatedBrush}"
+            BorderThickness="3,0,0,0"
+            CornerRadius="{StaticResource RadiusS}" Padding="14,10"
+            BoxShadow="0 4 16 0 #66000000"
+            IsVisible="{Binding ToastMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <TextBlock Grid.Column="0" Text="{Binding ToastMessage}"
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <Button Grid.Column="1" Classes="icon" Width="24" Height="24"
+                    Command="{Binding DismissToastCommand}">
+                <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+            </Button>
+        </Grid>
+    </Border>
+
+    </Panel>
 </UserControl>

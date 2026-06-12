@@ -6,7 +6,6 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using MusicApp.Services;
 using MusicApp.ViewModels;
 using MusicApp.Views;
 using Xunit;
@@ -52,21 +51,28 @@ public class MiniPlayerBottomBarTests
         Assert.Equal("0:30", mini.DurationText);
     }
 
-    // Bug 1 (safety half): a sample is a single-track preview, not an album queue.
-    // Next/Previous must stay no-ops in sample mode — otherwise skipping would
-    // start a full, unpurchased track and bypass the purchase gate.
+    // Bug 1 (safety half): skipping during a preview must never escalate into a
+    // full, unpurchased track. Next/Previous now step through the album's other
+    // 30-second previews — staying in sample mode keeps the purchase gate intact.
     [AvaloniaFact]
-    public void Skip_controls_are_noops_during_a_sample_preview()
+    public void Skip_steps_through_previews_without_leaving_sample_mode()
     {
-        var (h, _) = PlayFirstSample();
-        var sampled = h.Player!.CurrentTrack;
+        var h = new Harness();
+        h.OpenMainWindow(loginAs: "admin", password: "admin");
 
+        var album = h.Catalog!.Albums.First(a => a.Tracks.Count >= 2);
+        h.Player!.PlaySample(album.Tracks[0]);
+        var first = h.Player.CurrentTrack;
+
+        // Forward: moves to the next track's preview, still a 30s sample.
         h.Player.Next();
-        Assert.Same(sampled, h.Player.CurrentTrack);
+        Assert.NotSame(first, h.Player.CurrentTrack);
+        Assert.Equal(album.Tracks[1].Id, h.Player.CurrentTrack!.Id);
         Assert.True(h.Player.IsSampleMode);
 
+        // Back: returns to the first track's preview, still in sample mode.
         h.Player.Previous();
-        Assert.Same(sampled, h.Player.CurrentTrack);
+        Assert.Equal(album.Tracks[0].Id, h.Player.CurrentTrack!.Id);
         Assert.True(h.Player.IsSampleMode);
     }
 
@@ -88,6 +94,17 @@ public class MiniPlayerBottomBarTests
         return v.TranslatePoint(new Point(c.Bounds.Width / 2, c.Bounds.Height / 2), bar)!.Value.Y;
     }
 
+    // The volume glyph lives inside the mute toggle button of the right
+    // cluster (the StackPanel that also hosts the volume slider) — grab the
+    // first visible Path there.
+    private static Path FindVolumeIcon(MiniPlayerView bar)
+    {
+        var volumeSlider = bar.GetVisualDescendants().OfType<Slider>().First(s => s.Name != "SeekSlider");
+        var cluster = volumeSlider.GetVisualAncestors().OfType<StackPanel>().First();
+        return cluster.GetVisualDescendants().OfType<Path>()
+            .First(p => p.IsVisible && p.Bounds.Width > 0);
+    }
+
     // Spotify layout: the cover (left) and the volume cluster (right) are each
     // centred on the bar's midline — they are NOT pulled up to the transport row.
     [AvaloniaFact]
@@ -97,8 +114,7 @@ public class MiniPlayerBottomBarTests
         var mid = bar.Bounds.Height / 2;
 
         var cover = bar.GetVisualDescendants().OfType<Border>().First(b => b.Width == 48 && b.Height == 48);
-        var volumeIcon = bar.GetVisualDescendants().OfType<Path>()
-            .First(p => p.Bounds.Width > 0 && !p.GetVisualAncestors().OfType<Button>().Any());
+        var volumeIcon = FindVolumeIcon(bar);
 
         Assert.True(System.Math.Abs(CenterY(cover, bar) - mid) <= 4,
             $"Cover centre {CenterY(cover, bar):0.#} is not on the bar midline {mid:0.#}.");
@@ -144,8 +160,7 @@ public class MiniPlayerBottomBarTests
     {
         var (h, bar) = SettledBar();
 
-        var volumeIcon = bar.GetVisualDescendants().OfType<Path>()
-            .First(p => p.Bounds.Width > 0 && !p.GetVisualAncestors().OfType<Button>().Any());
+        var volumeIcon = FindVolumeIcon(bar);
         var volumeSlider = bar.GetVisualDescendants().OfType<Slider>().First(s => s.Name != "SeekSlider");
         var thumb = volumeSlider.GetVisualDescendants().OfType<Thumb>().First();
         // A right-cluster window button (Expand/Close), used as the row baseline.
@@ -168,7 +183,15 @@ public class MiniPlayerBottomBarTests
     [AvaloniaFact]
     public void Play_button_swaps_between_play_and_pause_glyphs()
     {
-        var (h, shell) = PlayFirstSample();
+        // No real playback here: live LibVLC posts its Playing event onto the
+        // dispatcher at an arbitrary moment and races the manual IsPlaying
+        // writes below. The glyph swap is a pure binding, so just show the bar.
+        var h = new Harness();
+        h.OpenMainWindow(loginAs: "admin", password: "admin");
+        var shell = (MainWindowViewModel)h.Window!.DataContext!;
+        shell.IsMiniPlayerVisible = true;
+        Dispatcher.UIThread.RunJobs();
+
         var bar = h.Find<Slider>("SeekSlider").GetVisualAncestors().OfType<MiniPlayerView>().First();
         var mini = shell.MiniPlayer!;
 

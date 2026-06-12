@@ -4,8 +4,35 @@
              xmlns:views="using:MusicApp.Views"
              xmlns:m="using:MusicApp.Models"
              xmlns:svc="using:MusicApp.Services"
+             xmlns:conv="using:MusicApp.Converters"
              x:Class="MusicApp.Views.ProfileView"
              x:DataType="vm:ProfileViewModel">
+
+    <UserControl.Styles>
+        <!-- The wishlist remove control reveals on card hover/focus — an
+             always-visible accent badge reads as a "saved" status marker,
+             not as a destructive action. -->
+        <Style Selector="Button.wishlist-remove">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Button.album-card:pointerover Button.wishlist-remove">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Button.album-card:focus-within Button.wishlist-remove">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <!-- Status banner: errors stay till dismissed and carry the danger tint. -->
+        <Style Selector="Border.status-banner.error">
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+        </Style>
+        <Style Selector="Border.status-banner.error TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+        </Style>
+        <!-- Row dividers separate items; the first row needs none. -->
+        <Style Selector="ItemsControl ContentPresenter:nth-child(1) Border.row-divider">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
 
     <StackPanel Margin="32,24,32,32" Spacing="20">
 
@@ -24,17 +51,17 @@
                 <StackPanel Grid.Column="1" Margin="20,0" VerticalAlignment="Center" Spacing="4">
                     <TextBlock Classes="tiny" Text="ПРОФІЛЬ"/>
                     <TextBlock Text="{Binding Username}" Classes="h2"/>
-                    <TextBlock Classes="muted">
-                        <Run Text="{Binding RoleLabel}"/>
-                        <Run Text=" · "/>
-                        <Run Text="{Binding Email}"/>
-                    </TextBlock>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Classes="muted" Text="{Binding RoleLabel}"/>
+                        <TextBlock Classes="muted" Text="{Binding Email, StringFormat=' · {0}'}"
+                                   IsVisible="{Binding HasEmail}"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <Button Grid.Column="2" Classes="ghost"
                         Content="Змінити пароль" VerticalAlignment="Center"
                         Command="{Binding OpenPasswordPanelCommand}"
-                        IsEnabled="{Binding IsAuthenticated}"/>
+                        IsVisible="{Binding IsAuthenticated}"/>
             </Grid>
         </Border>
 
@@ -43,17 +70,40 @@
                 CornerRadius="{StaticResource RadiusL}"
                 Padding="24"
                 IsVisible="{Binding IsPasswordPanelOpen}">
-            <views:ChangePasswordView DataContext="{Binding PasswordForm}"/>
+            <views:ChangePasswordView x:Name="PasswordPanel" DataContext="{Binding PasswordForm}"/>
         </Border>
 
-        <!-- Status banner -->
-        <Border Background="{StaticResource BgElevatedBrush}"
+        <!-- Status banner: success auto-hides after 5 s, errors stay till dismissed -->
+        <Border Classes="status-banner" Classes.error="{Binding IsStatusError}"
+                Background="{StaticResource BgElevatedBrush}"
+                BorderBrush="Transparent" BorderThickness="1"
                 CornerRadius="{StaticResource RadiusS}" Padding="12,8"
                 IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding StatusMessage}" Classes="muted"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding StatusMessage}" Classes="muted" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Classes="icon" Width="24" Height="24"
+                        ToolTip.Tip="Закрити"
+                        Command="{Binding DismissStatusCommand}">
+                    <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+                </Button>
+            </Grid>
         </Border>
 
-        <TabControl>
+        <!-- Guest gate: the tabs are meaningless without an account, so guests
+             get a login call-to-action instead of four empty lists. -->
+        <Border Background="{StaticResource BgElevatedBrush}"
+                CornerRadius="{StaticResource RadiusL}" Padding="32"
+                IsVisible="{Binding !IsAuthenticated}">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <TextBlock Classes="h3" Text="Ви не увійшли" HorizontalAlignment="Center"/>
+                <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                           Text="Увійдіть, щоб бачити замовлення, відгуки, збережені запити та збережені альбоми."/>
+                <Button Classes="primary" Content="Увійти" HorizontalAlignment="Center"
+                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenLoginCommand}"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl IsVisible="{Binding IsAuthenticated}">
 
             <!-- ============ Замовлення ============ -->
             <TabItem Header="Замовлення">
@@ -62,9 +112,14 @@
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                         <TextBlock Classes="muted" Text="Статус:" VerticalAlignment="Center"/>
                         <ComboBox ItemsSource="{Binding StatusFilterOptions}"
-                                  SelectedItem="{Binding OrderStatusFilter}"
-                                  MinWidth="160"
-                                  PlaceholderText="усі"/>
+                                  SelectedItem="{Binding SelectedStatusOption}"
+                                  MinWidth="160">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="vm:OrderStatusOption">
+                                    <TextBlock Text="{Binding Label}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <Button Classes="ghost"
                                 Command="{Binding ClearOrderFilterCommand}"
                                 IsVisible="{Binding OrderStatusFilter, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -76,69 +131,140 @@
                         </Button>
                     </StackPanel>
 
+                    <!-- The status is the whole point of this page: the admin completes
+                         the order by hand (there is no payment system), and completion is
+                         what unlocks full playback. Spell that out or the table reads as a
+                         dead log. -->
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="Щойно замовлення отримує статус «Виконано», його альбоми відкриваються для повного прослуховування у вкладці «Плеєр»."
+                               IsVisible="{Binding AllOrders.Count, Converter={x:Static conv:IntIsPositiveConverter.Instance}}"/>
+
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            CornerRadius="{StaticResource RadiusM}" Padding="14"
+                            IsVisible="{Binding Orders.Count, Converter={x:Static conv:IntIsPositiveConverter.Instance}}">
+                        <StackPanel>
+                        <!-- Header row: same column map as the rows below -->
+                        <Grid ColumnDefinitions="70,110,150,120,*,Auto" Margin="6,0,6,6">
+                            <TextBlock Grid.Column="0" Classes="tiny" Text="№"/>
+                            <TextBlock Grid.Column="1" Classes="tiny" Text="ДАТА"/>
+                            <TextBlock Grid.Column="2" Classes="tiny" Text="СТАТУС"/>
+                            <TextBlock Grid.Column="3" Classes="tiny" Text="СУМА"/>
+                            <TextBlock Grid.Column="4" Classes="tiny" Text="ПОЗИЦІЇ"/>
+                        </Grid>
                         <ItemsControl ItemsSource="{Binding Orders}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="m:Order">
                                     <Border Padding="6,10"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
-                                        <Grid ColumnDefinitions="70,140,170,*,Auto"
-                                              VerticalAlignment="Center">
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding Id, StringFormat='№{0}'}"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
-                                                       Classes="muted" VerticalAlignment="Center"/>
-                                            <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left"
-                                                    VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Status, Converter={StaticResource OrderStatusUa}}" FontSize="11"/>
+                                        <StackPanel>
+                                            <Grid ColumnDefinitions="70,110,150,120,*,Auto"
+                                                  VerticalAlignment="Center">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Id, StringFormat='№{0}'}"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                           Classes="muted" VerticalAlignment="Center"/>
+                                                <Border Grid.Column="2" Classes="chip" HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Status, Converter={StaticResource OrderStatusUa}}" FontSize="11"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding TotalAmount, StringFormat='{}{0:N0} ₴'}"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding Items.Count, Converter={StaticResource UkPlural}, ConverterParameter='позиція|позиції|позицій'}"
+                                                           Classes="muted" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                                <Button Grid.Column="5" Classes="ghost" MinWidth="104"
+                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).ToggleOrderDetailsCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Panel>
+                                                        <TextBlock Text="Деталі →">
+                                                            <TextBlock.IsVisible>
+                                                                <MultiBinding Converter="{x:Static conv:SameOrderConverter.Inverted}">
+                                                                    <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).ExpandedOrder"/>
+                                                                    <Binding Path="."/>
+                                                                </MultiBinding>
+                                                            </TextBlock.IsVisible>
+                                                        </TextBlock>
+                                                        <TextBlock Text="Сховати">
+                                                            <TextBlock.IsVisible>
+                                                                <MultiBinding Converter="{x:Static conv:SameOrderConverter.Instance}">
+                                                                    <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).ExpandedOrder"/>
+                                                                    <Binding Path="."/>
+                                                                </MultiBinding>
+                                                            </TextBlock.IsVisible>
+                                                        </TextBlock>
+                                                    </Panel>
+                                                </Button>
+                                            </Grid>
+
+                                            <!-- Inline details: expand right under the clicked row, not
+                                                 in a panel after the whole list (which sat below the fold). -->
+                                            <Border Margin="0,10,0,2" Padding="12"
+                                                    CornerRadius="{StaticResource RadiusS}"
+                                                    Background="{StaticResource BgChipBrush}">
+                                                <Border.IsVisible>
+                                                    <MultiBinding Converter="{x:Static conv:SameOrderConverter.Instance}">
+                                                        <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).ExpandedOrder"/>
+                                                        <Binding Path="."/>
+                                                    </MultiBinding>
+                                                </Border.IsVisible>
+                                                <StackPanel Spacing="8">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                                                   Text="{Binding ShippingAddress, StringFormat='Доставка: {0}'}"
+                                                                   IsVisible="{Binding ShippingAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                                                   Text="{Binding Comment, StringFormat='Коментар: {0}'}"
+                                                                   IsVisible="{Binding Comment, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                    </StackPanel>
+                                                    <ItemsControl ItemsSource="{Binding Items}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="m:OrderItem">
+                                                                <Grid ColumnDefinitions="*,80,Auto,Auto" Margin="0,3">
+                                                                    <StackPanel Grid.Column="0" Spacing="2">
+                                                                        <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
+                                                                        <TextBlock Text="{Binding Product.Album.Artist.Name}"
+                                                                                   Classes="muted" FontSize="11"/>
+                                                                    </StackPanel>
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}" Classes="muted"/>
+                                                                    <TextBlock Grid.Column="2"
+                                                                               Text="{Binding Quantity, StringFormat='× {0}'}"
+                                                                               Classes="muted" Margin="10,0"/>
+                                                                    <TextBlock Grid.Column="3"
+                                                                               Text="{Binding LineTotal, StringFormat='{}{0:N0} ₴'}"
+                                                                               Foreground="{StaticResource AccentBrush}"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <!-- Items-total line so the order sum can be verified in place -->
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                                        <TextBlock Classes="muted" Text="Разом"/>
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding TotalAmount, StringFormat='{}{0:N0} ₴'}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource AccentBrush}"/>
+                                                    </Grid>
+                                                </StackPanel>
                                             </Border>
-                                            <TextBlock Grid.Column="3"
-                                                       Text="{Binding TotalAmount, StringFormat='{}{0:0} ₴'}"
-                                                       Foreground="{StaticResource AccentBrush}"
-                                                       FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"/>
-                                            <Button Grid.Column="4" Classes="ghost" Content="Деталі →"
-                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).ToggleOrderDetailsCommand}"
-                                                    CommandParameter="{Binding}"/>
-                                        </Grid>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </Border>
-
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14"
-                            IsVisible="{Binding ExpandedOrder, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="h3"
-                                       Text="{Binding ExpandedOrder.Id, StringFormat='Деталі замовлення №{0}'}"/>
-                            <ItemsControl ItemsSource="{Binding ExpandedOrder.Items}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="m:OrderItem">
-                                        <Grid ColumnDefinitions="*,80,Auto,Auto" Margin="0,3">
-                                            <StackPanel Grid.Column="0" Spacing="2">
-                                                <TextBlock Text="{Binding Product.Album.Title}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Product.Album.Artist.Name}"
-                                                           Classes="muted" FontSize="11"/>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding Product.FormatBadge}" Classes="muted"/>
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding Quantity, StringFormat='× {0}'}"
-                                                       Classes="muted" Margin="10,0"/>
-                                            <TextBlock Grid.Column="3"
-                                                       Text="{Binding LineTotal, StringFormat='{}{0:0} ₴'}"
-                                                       Foreground="{StaticResource AccentBrush}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
                         </StackPanel>
                     </Border>
+
+                    <TextBlock Classes="muted" Text="У вас ще немає замовлень. Оформіть перше у «Кошику»."
+                               IsVisible="{Binding HasNoOrders}"/>
+                    <TextBlock Classes="muted" Text="Жодного замовлення з обраним статусом."
+                               IsVisible="{Binding HasOrdersButNoneMatch}"/>
                 </StackPanel>
             </TabItem>
 
@@ -146,49 +272,34 @@
             <TabItem Header="Мої відгуки">
                 <StackPanel Spacing="12" Margin="0,14,0,0">
 
-                    <!-- Edit panel -->
+                    <!-- List; the editor expands inline under the row being
+                         edited — same pattern as the orders' details. -->
                     <Border Background="{StaticResource BgElevatedBrush}"
                             CornerRadius="{StaticResource RadiusM}" Padding="14"
-                            IsVisible="{Binding EditingReview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="h3"
-                                       Text="{Binding EditingReview.Product.Album.Title, StringFormat='Редагувати: {0}'}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Classes="muted" Text="Оцінка:" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding EditingReviewRating}"
-                                               Minimum="1" Maximum="5" Increment="1"
-                                               Width="100"/>
-                                <Path Classes="icon accent filled" Data="{StaticResource IconStar}"
-                                      VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBox Text="{Binding EditingReviewText}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     MinHeight="100"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                <Button Classes="link-inline" Content="Скасувати"
-                                        Command="{Binding CancelEditReviewCommand}"/>
-                                <Button Classes="primary" Content="Зберегти"
-                                        Command="{Binding SaveEditReviewCommand}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- List -->
-                    <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            IsVisible="{Binding MyReviews.Count, Converter={x:Static conv:IntIsPositiveConverter.Instance}}">
                         <ItemsControl ItemsSource="{Binding MyReviews}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="m:Review">
-                                    <Border Padding="0,10"
+                                    <Border Classes="row-divider" Padding="0,10"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
+                                        <StackPanel>
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                             <StackPanel Grid.Column="0" Grid.Row="0" Spacing="2">
-                                                <TextBlock FontWeight="SemiBold"
-                                                           Text="{Binding Product.Album.Title}"/>
-                                                <TextBlock Classes="muted" FontSize="12"
-                                                           Text="{Binding Product.Album.Artist.Name}"/>
+                                                <Button Classes="link-inline" Padding="0"
+                                                        HorizontalAlignment="Left"
+                                                        ToolTip.Tip="Відкрити сторінку альбому"
+                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).OpenReviewProductCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Text="{Binding Product.Album.Title}"/>
+                                                </Button>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Classes="muted" FontSize="12"
+                                                               Text="{Binding Product.Album.Artist.Name}"/>
+                                                    <TextBlock Classes="muted" FontSize="12"
+                                                               Text="{Binding CreatedAt, StringFormat='· {0:dd.MM.yyyy}'}"/>
+                                                </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Grid.Row="0"
                                                         Orientation="Horizontal" Spacing="6"
@@ -199,20 +310,108 @@
                                                            Text="{Binding Rating}"
                                                            VerticalAlignment="Center"/>
                                                 <Button Classes="icon" Width="32" Height="32"
+                                                        ToolTip.Tip="Редагувати"
                                                         Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).StartEditReviewCommand}"
                                                         CommandParameter="{Binding}">
                                                     <Path Classes="icon" Data="{StaticResource IconEdit}"/>
                                                 </Button>
                                                 <Button Classes="icon" Width="32" Height="32"
-                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteReviewCommand}"
+                                                        ToolTip.Tip="Видалити"
+                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).RequestDeleteReviewCommand}"
                                                         CommandParameter="{Binding}">
+                                                    <Button.IsVisible>
+                                                        <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Inverted}">
+                                                            <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).ReviewPendingDelete"/>
+                                                            <Binding Path="."/>
+                                                        </MultiBinding>
+                                                    </Button.IsVisible>
                                                     <Path Classes="icon" Data="{StaticResource IconTrash}"/>
                                                 </Button>
+                                                <!-- Inline confirmation: one slip near the icons must not
+                                                     silently cost a written review -->
+                                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <StackPanel.IsVisible>
+                                                        <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Instance}">
+                                                            <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).ReviewPendingDelete"/>
+                                                            <Binding Path="."/>
+                                                        </MultiBinding>
+                                                    </StackPanel.IsVisible>
+                                                    <TextBlock Classes="muted" Text="Видалити?" VerticalAlignment="Center"/>
+                                                    <Button Classes="link-inline" Content="Так"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteReviewCommand}"
+                                                            CommandParameter="{Binding}"/>
+                                                    <Button Classes="link-inline" Content="Ні"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).CancelDeleteReviewCommand}"/>
+                                                </StackPanel>
                                             </StackPanel>
                                             <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
                                                        Text="{Binding Text}"
-                                                       TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                                       TextWrapping="Wrap" Margin="0,6,0,0">
+                                                <TextBlock.IsVisible>
+                                                    <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Inverted}">
+                                                        <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReview"/>
+                                                        <Binding Path="."/>
+                                                    </MultiBinding>
+                                                </TextBlock.IsVisible>
+                                            </TextBlock>
                                         </Grid>
+
+                                        <!-- Inline editor for this row -->
+                                        <Border Margin="0,8,0,2" Padding="12"
+                                                CornerRadius="{StaticResource RadiusS}"
+                                                Background="{StaticResource BgChipBrush}">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Instance}">
+                                                    <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReview"/>
+                                                    <Binding Path="."/>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
+                                            <StackPanel Spacing="8">
+                                                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Classes="muted" Text="Оцінка:"
+                                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <Button Classes="icon" Width="30" Height="30" ToolTip.Tip="1 із 5"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SetEditingRatingCommand}"
+                                                            CommandParameter="1">
+                                                        <Path Classes="icon sm accent" Data="{StaticResource IconStar}"
+                                                              Classes.filled="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewRating, Converter={x:Static conv:IntAtLeastConverter.Instance}, ConverterParameter=1}"/>
+                                                    </Button>
+                                                    <Button Classes="icon" Width="30" Height="30" ToolTip.Tip="2 із 5"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SetEditingRatingCommand}"
+                                                            CommandParameter="2">
+                                                        <Path Classes="icon sm accent" Data="{StaticResource IconStar}"
+                                                              Classes.filled="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewRating, Converter={x:Static conv:IntAtLeastConverter.Instance}, ConverterParameter=2}"/>
+                                                    </Button>
+                                                    <Button Classes="icon" Width="30" Height="30" ToolTip.Tip="3 із 5"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SetEditingRatingCommand}"
+                                                            CommandParameter="3">
+                                                        <Path Classes="icon sm accent" Data="{StaticResource IconStar}"
+                                                              Classes.filled="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewRating, Converter={x:Static conv:IntAtLeastConverter.Instance}, ConverterParameter=3}"/>
+                                                    </Button>
+                                                    <Button Classes="icon" Width="30" Height="30" ToolTip.Tip="4 із 5"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SetEditingRatingCommand}"
+                                                            CommandParameter="4">
+                                                        <Path Classes="icon sm accent" Data="{StaticResource IconStar}"
+                                                              Classes.filled="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewRating, Converter={x:Static conv:IntAtLeastConverter.Instance}, ConverterParameter=4}"/>
+                                                    </Button>
+                                                    <Button Classes="icon" Width="30" Height="30" ToolTip.Tip="5 із 5"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SetEditingRatingCommand}"
+                                                            CommandParameter="5">
+                                                        <Path Classes="icon sm accent" Data="{StaticResource IconStar}"
+                                                              Classes.filled="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewRating, Converter={x:Static conv:IntAtLeastConverter.Instance}, ConverterParameter=5}"/>
+                                                    </Button>
+                                                </StackPanel>
+                                                <TextBox AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                                                         Text="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).EditingReviewText}"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                                    <Button Classes="link-inline" Content="Скасувати"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).CancelEditReviewCommand}"/>
+                                                    <Button Classes="primary" Content="Зберегти"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).SaveEditReviewCommand}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -220,51 +419,76 @@
                     </Border>
 
                     <TextBlock Classes="muted" Text="У вас ще немає відгуків."
-                               IsVisible="{Binding MyReviews.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"/>
+                               IsVisible="{Binding MyReviews.Count, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
                 </StackPanel>
             </TabItem>
 
-            <!-- ============ Збережені запити ============ -->
-            <TabItem Header="Збережені запити">
+            <!-- ============ Пошукові запити ============ -->
+            <!-- «Пошукові», not «Збережені»: next to the «Збережене» tab the two
+                 names were near-synonyms users could not tell apart. -->
+            <TabItem Header="Пошукові запити">
                 <StackPanel Spacing="12" Margin="0,14,0,0">
                     <Border Background="{StaticResource BgElevatedBrush}"
-                            CornerRadius="{StaticResource RadiusM}" Padding="14">
+                            CornerRadius="{StaticResource RadiusM}" Padding="14"
+                            IsVisible="{Binding SavedSearches.Count, Converter={x:Static conv:IntIsPositiveConverter.Instance}}">
                         <ItemsControl ItemsSource="{Binding SavedSearches}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="svc:SavedSearchSummary">
-                                    <Border Padding="0,10"
+                                    <Border Classes="row-divider" Padding="0,10"
                                             BorderBrush="{StaticResource DividerSoftBrush}"
                                             BorderThickness="0,1,0,0">
-                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
+                                        <!-- No «Сповіщати» toggle: the app has no notification
+                                             mechanism, the checkbox promised something that
+                                             never fired. NotifyOnNew stays in the schema. -->
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" VerticalAlignment="Center">
                                             <StackPanel Grid.Column="0" Spacing="2">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding Saved.Name}"/>
                                                 <TextBlock Classes="muted" FontSize="12"
-                                                           Text="{Binding Saved.QueryJson, StringFormat='запит: {0}'}"/>
+                                                           Text="{Binding Saved.QueryJson, StringFormat='запит: {0}'}"
+                                                           IsVisible="{Binding HasDistinctQuery}"/>
                                             </StackPanel>
-                                            <Border Grid.Column="1" Classes="chip accent" Margin="6,0">
+                                            <Border Grid.Column="1" Classes="chip" Margin="6,0">
                                                 <TextBlock Text="{Binding CurrentCount, Converter={StaticResource UkPlural}, ConverterParameter='результат|результати|результатів'}"
-                                                           FontSize="11" Foreground="{StaticResource OnAccentBrush}"/>
+                                                           FontSize="11" Foreground="{StaticResource FgSecondaryBrush}"/>
                                             </Border>
-                                            <CheckBox Grid.Column="2"
-                                                      Content="Сповіщати"
-                                                      IsChecked="{Binding Saved.NotifyOnNew, Mode=OneWay}"
-                                                      Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).ToggleSavedSearchNotifyCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      Margin="6,0"/>
-                                            <Button Grid.Column="3" Classes="ghost"
+                                            <Button Grid.Column="2" Classes="ghost"
                                                     Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).RunSavedSearchCommand}"
                                                     CommandParameter="{Binding}">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                                    <Path Classes="icon sm filled primary" Data="{StaticResource IconPlay}"
+                                                    <Path Classes="icon sm" Data="{StaticResource IconSearch}"
                                                           VerticalAlignment="Center"/>
                                                     <TextBlock Text="Відкрити" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button Grid.Column="4" Classes="icon" Width="32" Height="32"
-                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteSavedSearchCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <Path Classes="icon" Data="{StaticResource IconTrash}"/>
-                                            </Button>
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
+                                                        Spacing="4" VerticalAlignment="Center">
+                                                <Button Classes="icon" Width="32" Height="32"
+                                                        ToolTip.Tip="Видалити запит"
+                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).RequestDeleteSavedSearchCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Button.IsVisible>
+                                                        <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Inverted}">
+                                                            <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).SavedSearchPendingDelete"/>
+                                                            <Binding Path="."/>
+                                                        </MultiBinding>
+                                                    </Button.IsVisible>
+                                                    <Path Classes="icon" Data="{StaticResource IconTrash}"/>
+                                                </Button>
+                                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <StackPanel.IsVisible>
+                                                        <MultiBinding Converter="{x:Static conv:SameReferenceConverter.Instance}">
+                                                            <Binding Path="$parent[ItemsControl].((vm:ProfileViewModel)DataContext).SavedSearchPendingDelete"/>
+                                                            <Binding Path="."/>
+                                                        </MultiBinding>
+                                                    </StackPanel.IsVisible>
+                                                    <TextBlock Classes="muted" Text="Видалити?" VerticalAlignment="Center"/>
+                                                    <Button Classes="link-inline" Content="Так"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).DeleteSavedSearchCommand}"
+                                                            CommandParameter="{Binding}"/>
+                                                    <Button Classes="link-inline" Content="Ні"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).CancelDeleteSavedSearchCommand}"/>
+                                                </StackPanel>
+                                            </StackPanel>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -273,7 +497,95 @@
                     </Border>
 
                     <TextBlock Classes="muted" Text="Жодного збереженого запиту."
-                               IsVisible="{Binding SavedSearches.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"/>
+                               IsVisible="{Binding SavedSearches.Count, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ============ Збережене ============ -->
+            <TabItem Header="Збережене">
+                <StackPanel Spacing="12" Margin="0,14,0,0">
+                    <ItemsControl ItemsSource="{Binding WishlistItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="m:Product">
+                                <Button Classes="album-card" Width="180"
+                                        VerticalAlignment="Top"
+                                        Margin="0,0,14,14"
+                                        Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).OpenWishlistItemCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Spacing="8">
+                                        <Grid>
+                                            <Border Width="152" Height="152"
+                                                    CornerRadius="{StaticResource RadiusM}"
+                                                    Background="{Binding Album, Converter={StaticResource AlbumToGradient}}"
+                                                    ClipToBounds="True">
+                                                <Grid>
+                                                    <TextBlock Text="{Binding Album.Title, Converter={StaticResource FirstChar}}"
+                                                               FontSize="56" FontWeight="Bold" Opacity="0.45"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{StaticResource FgPrimaryBrush}"
+                                                               IsVisible="{Binding Album.CoverPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                    <Image Source="{Binding Album.CoverPath, Converter={StaticResource CoverPathToImage}}"
+                                                           Stretch="UniformToFill"/>
+                                                </Grid>
+                                            </Border>
+                                            <Button Classes="play-circle wishlist-remove"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,6,6,0"
+                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).RemoveWishlistItemCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Прибрати зі збереженого">
+                                                <Path Data="{StaticResource IconClose}"
+                                                      Stroke="{StaticResource OnAccentBrush}"
+                                                      StrokeThickness="2"
+                                                      Width="14" Height="14" Stretch="Uniform"/>
+                                            </Button>
+                                        </Grid>
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Album.Title}"
+                                                       FontWeight="SemiBold" FontSize="14"
+                                                       Foreground="{StaticResource FgPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding Album.Artist.Name}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                            <Border Grid.Column="0" Classes="chip" Padding="6,2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FormatBadge}" FontSize="11"
+                                                           Foreground="{StaticResource FgSecondaryBrush}"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Margin="8,0,0,0"
+                                                       Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="3" Classes="icon" Width="28" Height="28"
+                                                    ToolTip.Tip="До кошика"
+                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileViewModel)DataContext).AddWishlistItemToCartCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding Stock, Converter={x:Static conv:IntIsPositiveConverter.Instance}}">
+                                                <Path Classes="icon sm" Data="{StaticResource IconCart}"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{StaticResource DangerBrush}"
+                                                   Text="Немає в наявності"
+                                                   IsVisible="{Binding Stock, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Classes="muted" Text="Ще немає збережених альбомів. Натисніть «Зберегти» на сторінці альбому."
+                               IsVisible="{Binding WishlistItems.Count, Converter={x:Static conv:IntIsZeroConverter.Instance}}"/>
                 </StackPanel>
             </TabItem>
         </TabControl>

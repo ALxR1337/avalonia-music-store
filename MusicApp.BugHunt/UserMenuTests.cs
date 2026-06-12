@@ -48,13 +48,13 @@ public class UserMenuTests
         var (h, shell) = OpenAdminMenu();
 
         Assert.Same(shell.NavigateCommand, MenuRow(h, "Профіль").Command);
-        Assert.Same(shell.NavigateCommand, MenuRow(h, "Мої замовлення").Command);
         Assert.Same(shell.ChangePasswordCommand, MenuRow(h, "Змінити пароль").Command);
         Assert.Same(shell.LogoutCommand, MenuRow(h, "Вийти").Command);
 
-        // …and the Navigate rows must pass their target as the parameter.
+        // …and the Navigate row must pass its target as the parameter.
+        // («Мої замовлення» is gone: order history is the profile's first tab,
+        // so the row duplicated «Профіль».)
         Assert.Equal("Profile", MenuRow(h, "Профіль").CommandParameter);
-        Assert.Equal("Orders", MenuRow(h, "Мої замовлення").CommandParameter);
     }
 
     // Clicking "Профіль" navigates and closes the menu.

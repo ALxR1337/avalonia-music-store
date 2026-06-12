@@ -49,7 +49,6 @@ public class UiAuditTests
         h.RunStep("audit-04b-product-tall", () => h.SetWindowSize(1280, 3200));
         h.SetWindowSize(1280, 800);
 
-        h.RunStep("audit-05-orders", () => h.Nav!.NavigateTo(NavTarget.Orders));
         h.RunStep("audit-06-profile", () => h.Nav!.NavigateTo(NavTarget.Profile));
         h.RunStep("audit-06b-profile-tall", () => h.SetWindowSize(1280, 2200));
         h.SetWindowSize(1280, 800);

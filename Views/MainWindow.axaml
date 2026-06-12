@@ -51,17 +51,27 @@
                 <Border Grid.Column="1" Classes="search-pill"
                         Padding="14,0" MaxWidth="520" Height="40"
                         HorizontalAlignment="Stretch" Margin="20,0">
-                    <Grid ColumnDefinitions="Auto,*">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
                         <Path Grid.Column="0" Classes="icon sm primary"
                               Data="{StaticResource IconSearch}"
                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBox Grid.Column="1" Classes="bare"
+                        <TextBox x:Name="SearchBox" Grid.Column="1" Classes="bare"
                                  MinHeight="0"
                                  PlaceholderText="Виконавці, альбоми, треки..."
                                  Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalAlignment="Center"
                                  VerticalContentAlignment="Center"
-                                 KeyDown="OnSearchKeyDown"/>
+                                 KeyDown="OnSearchKeyDown"
+                                 GotFocus="OnSearchGotFocus"/>
+                        <!-- Click-handler only (no Command) so code-behind can
+                             return focus to the box after clearing. -->
+                        <Button Grid.Column="2" Classes="ghost" Padding="4"
+                                VerticalAlignment="Center" Margin="6,0,0,0"
+                                IsVisible="{Binding SearchQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Click="OnSearchClear"
+                                AutomationProperties.Name="Очистити пошук">
+                            <Path Classes="icon sm" Data="{StaticResource IconClose}"/>
+                        </Button>
                         <Popup Grid.Column="1"
                                PlacementTarget="{Binding $parent[Border]}"
                                Placement="Bottom"
@@ -76,8 +86,9 @@
                                     Padding="6">
                                 <ItemsControl ItemsSource="{Binding Suggestions}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate DataType="vm:SuggestionItemViewModel">
                                             <Button Classes="ghost"
+                                                    Classes.highlighted="{Binding IsHighlighted}"
                                                     HorizontalContentAlignment="Stretch"
                                                     HorizontalAlignment="Stretch"
                                                     Padding="10,6"
@@ -102,7 +113,8 @@
                                                     <StackPanel Grid.Column="1" Spacing="2">
                                                         <TextBlock Text="{Binding Text}" FontWeight="SemiBold"
                                                                    TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Kind}" Classes="muted" FontSize="11"/>
+                                                        <TextBlock Text="{Binding Subtitle}" Classes="muted" FontSize="11"
+                                                                   TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
@@ -188,13 +200,6 @@
                                     <StackPanel Orientation="Horizontal" Spacing="12">
                                         <Path Classes="icon sm" Data="{StaticResource IconUser}"/>
                                         <TextBlock Text="Профіль" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
-                                        Command="{Binding NavigateCommand}" CommandParameter="Orders">
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Path Classes="icon sm" Data="{StaticResource IconBox}"/>
-                                        <TextBlock Text="Мої замовлення" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Classes="menu-row" IsVisible="{Binding !IsGuest}"
@@ -292,13 +297,6 @@
                         </Border>
                     </Grid>
                 </Button>
-                <Button Classes="nav-item" Classes.active="{Binding IsOrdersActive}"
-                        Command="{Binding NavigateCommand}" CommandParameter="Orders">
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <Path Classes="icon" Data="{StaticResource IconBox}"/>
-                        <TextBlock Text="Замовлення" VerticalAlignment="Center" IsVisible="{Binding !IsSidebarCollapsed}"/>
-                    </StackPanel>
-                </Button>
                 <Button Classes="nav-item" Classes.active="{Binding IsProfileActive}"
                         Command="{Binding NavigateCommand}" CommandParameter="Profile">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -386,6 +384,16 @@
                 ZIndex="1000"
                 PointerPressed="OnCoverBackdropPressed">
             <Grid RowDefinitions="*,8*,*" ColumnDefinitions="*,8*,*">
+                <!-- Visible exit: backdrop click and Esc also close, but neither
+                     is discoverable for an overlay opened by an accidental click. -->
+                <Button Classes="icon" Width="40" Height="40"
+                        Grid.RowSpan="3" Grid.ColumnSpan="3"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,20,20,0"
+                        Command="{Binding CloseCoverFullscreenCommand}"
+                        ToolTip.Tip="Закрити (Esc)">
+                    <Path Classes="icon" Data="{StaticResource IconClose}"/>
+                </Button>
                 <Viewbox Grid.Row="1" Grid.Column="1" Stretch="Uniform">
                     <Border Width="600" Height="600"
                             CornerRadius="{StaticResource RadiusL}"

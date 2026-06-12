@@ -35,11 +35,12 @@ public class CartService : ICartService
     public void Add(Product product, int quantity = 1)
     {
         if (product is null || quantity <= 0) return;
+        // Out-of-stock products must not enter the cart at all — without this
+        // the clamp below is skipped for Stock == 0 and the item slips in.
+        if (product.Stock <= 0) return;
 
         var existing = Items.FirstOrDefault(i => i.ProductId == product.Id);
-        var desired = (existing?.Quantity ?? 0) + quantity;
-        if (product.Stock > 0)
-            desired = Math.Min(desired, product.Stock);
+        var desired = Math.Min((existing?.Quantity ?? 0) + quantity, product.Stock);
 
         if (IsGuest)
         {

@@ -9,5 +9,5 @@ public sealed class NewArrivalAlbum
     public bool HasVinyl => Vinyl is not null;
     public bool HasCd => Cd is not null;
 
-    public Product PrimaryProduct => Vinyl ?? Cd!;
+    public Product? PrimaryProduct => Vinyl ?? Cd;
 }

@@ -10,7 +10,6 @@ public enum NavTarget
     Product,
     Cart,
     Profile,
-    Orders,
     Player,
     Admin
 }

@@ -11,6 +11,7 @@ public interface IPlayerService
     event EventHandler? PlaybackStateChanged;
     event EventHandler? ShuffleModeChanged;
     event EventHandler? RepeatModeChanged;
+    event EventHandler? VolumeChanged;
 
     Track? CurrentTrack { get; }
     Album? CurrentAlbum { get; }

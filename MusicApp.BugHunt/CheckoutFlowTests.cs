@@ -44,9 +44,11 @@ public class CheckoutFlowTests
         Assert.Equal("Подзвонити заздалегідь", cvm.CompletedOrder.Comment);
         Assert.Empty(h.Cart!.Items);
 
+        // «До замовлень» lands on the profile — its first tab is the order
+        // history (the standalone orders page is gone).
         cvm.GoToOrdersCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
-        Assert.IsType<OrdersViewModel>(h.Nav!.CurrentView);
+        Assert.IsType<ProfileViewModel>(h.Nav!.CurrentView);
     }
 
     [AvaloniaFact]

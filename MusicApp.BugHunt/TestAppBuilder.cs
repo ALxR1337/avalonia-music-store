@@ -13,6 +13,18 @@ namespace MusicApp.BugHunt;
 
 public static class TestAppBuilder
 {
+    // The harness boots App directly, bypassing Program.Main — mirror its
+    // ConfigureUkrainianCulture so screenshots match what real users see
+    // (Ukrainian month names, space thousand separators, comma decimals).
+    static TestAppBuilder()
+    {
+        var culture = new System.Globalization.CultureInfo("uk-UA");
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
+    }
+
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UseSkia()
         .UseHeadless(new AvaloniaHeadlessPlatformOptions

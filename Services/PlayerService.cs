@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Avalonia.Threading;
@@ -20,12 +21,19 @@ public class PlayerService : IPlayerService, IDisposable
     private readonly MediaPlayer _mp;
 
     private int _currentIndex = -1;
+    // Shuffle is a random walk over the current album: a permutation of track
+    // indices anchored on the playing track. Next/Previous step through it, so
+    // every track is visited exactly once per cycle.
+    private List<int>? _shuffleOrder;
+    private int _shufflePos = -1;
+    private readonly Random _shuffleRng = new();
     private bool _isSampleMode;
     private long _sampleStartMs;
     private long _sampleEndMs;
     private double _volume = 0.7;
     private bool _disposed;
     private bool _settingsLoaded;
+    private readonly DispatcherTimer _volumePersistDebounce;
 
     public PlayerService(
         IAuthService? auth = null,
@@ -39,6 +47,13 @@ public class PlayerService : IPlayerService, IDisposable
         LibVlcInitializer.EnsureInitialized();
         _libVlc = new LibVLC();
         _mp = new MediaPlayer(_libVlc) { Volume = (int)(_volume * 100) };
+
+        _volumePersistDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _volumePersistDebounce.Tick += (_, _) =>
+        {
+            _volumePersistDebounce.Stop();
+            PersistSettings();
+        };
 
         _mp.TimeChanged += OnTimeChanged;
         _mp.EndReached += OnEndReached;
@@ -59,6 +74,7 @@ public class PlayerService : IPlayerService, IDisposable
     public event EventHandler? PlaybackStateChanged;
     public event EventHandler? ShuffleModeChanged;
     public event EventHandler? RepeatModeChanged;
+    public event EventHandler? VolumeChanged;
 
     public Track? CurrentTrack { get; private set; }
     public Album? CurrentAlbum { get; private set; }
@@ -98,7 +114,11 @@ public class PlayerService : IPlayerService, IDisposable
             if (Math.Abs(clamped - _volume) < 0.001) return;
             _volume = clamped;
             _mp.Volume = (int)(_volume * 100);
-            PersistSettings();
+            VolumeChanged?.Invoke(this, EventArgs.Empty);
+            // Dragging the slider lands here once per pixel; debounce the
+            // SQLite write instead of hitting the DB on every tick.
+            _volumePersistDebounce.Stop();
+            _volumePersistDebounce.Start();
         }
     }
 
@@ -110,6 +130,7 @@ public class PlayerService : IPlayerService, IDisposable
         {
             if (_shuffleMode == value) return;
             _shuffleMode = value;
+            RebuildShuffleOrder();
             PersistSettings();
             ShuffleModeChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -134,6 +155,7 @@ public class PlayerService : IPlayerService, IDisposable
         if (!IsAlbumPlayable(album.Id)) return;
         CurrentAlbum = album;
         _currentIndex = Math.Clamp(startTrackIndex, 0, album.Tracks.Count - 1);
+        RebuildShuffleOrder();
         StartTrack(album.Tracks[_currentIndex], sampleMode: false);
     }
 
@@ -147,11 +169,15 @@ public class PlayerService : IPlayerService, IDisposable
 
     public void PlaySample(Track track)
     {
-        // Resolve the owning album so the mini-player can show its cover art.
-        // This stays a single-track preview: Next/Previous are no-ops in sample
-        // mode (guarded below), so surfacing the album here can't be used to skip
-        // into full, unpurchased tracks.
+        // Resolve the owning album so the mini-player can show its cover art and
+        // so Next/Previous can step through the album's other previews. Skipping
+        // stays in sample mode (StartTrack(sampleMode: _isSampleMode) in
+        // Next/Previous), so it can never escalate into a full, unpurchased track.
         CurrentAlbum = _catalog?.GetAlbum(track.AlbumId);
+        // Match by Id, not reference: CurrentAlbum is a freshly-fetched instance,
+        // so its Track objects differ from the one passed in by the caller.
+        _currentIndex = CurrentAlbum?.Tracks.FindIndex(t => t.Id == track.Id) ?? -1;
+        RebuildShuffleOrder();
         StartTrack(track, sampleMode: true);
     }
 
@@ -162,6 +188,7 @@ public class PlayerService : IPlayerService, IDisposable
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
         CurrentAlbum = null;
+        RebuildShuffleOrder();
         var track = new Track
         {
             Id = 0,
@@ -182,7 +209,10 @@ public class PlayerService : IPlayerService, IDisposable
 
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
-            // No real audio — surface the open so UI updates, but don't try to play.
+            // No real audio — stop whatever was sounding (otherwise the previous
+            // track keeps playing under the new track's title) and surface the
+            // open so UI updates, but don't try to play.
+            _mp.Stop();
             IsPlaying = false;
             _sampleStartMs = 0;
             _sampleEndMs = 0;
@@ -215,32 +245,98 @@ public class PlayerService : IPlayerService, IDisposable
     public void TogglePlayPause()
     {
         if (CurrentTrack is null) return;
-        if (_mp.IsPlaying) _mp.Pause();
-        else _mp.Play();
+        if (_mp.IsPlaying)
+        {
+            _mp.Pause();
+            return;
+        }
+        // Cold "continue where you left off" state (restored on login): the
+        // track is surfaced in the UI but no media was loaded yet.
+        if (_mp.Media is null)
+        {
+            StartTrack(CurrentTrack, sampleMode: _isSampleMode);
+            return;
+        }
+        // A stopped/ended sample must relaunch through StartTrack so playback
+        // re-enters the 30s window — a raw Play() restarts the file from 0:00,
+        // before _sampleStartMs, i.e. outside the preview.
+        if (_isSampleMode && _mp.State is VLCState.Stopped or VLCState.Ended)
+        {
+            StartTrack(CurrentTrack, sampleMode: true);
+            return;
+        }
+        _mp.Play();
     }
 
     public void Stop()
     {
         _mp.Stop();
         _sampleEndMs = 0;
+        // LibVLC raises Stopped asynchronously from its own thread; report the
+        // idle state right away so the UI doesn't show "playing" in the gap.
+        IsPlaying = false;
+        PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Next()
     {
-        // A sample is a single-track preview, not an album queue — skipping would
-        // otherwise start a full, unpurchased track via StartTrack(sampleMode:false).
-        if (_isSampleMode) return;
         if (CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0) return;
-        _currentIndex = (_currentIndex + 1) % CurrentAlbum.Tracks.Count;
-        StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: false);
+        if (_shuffleMode && _shuffleOrder is { Count: > 0 })
+        {
+            _shufflePos = (_shufflePos + 1) % _shuffleOrder.Count;
+            _currentIndex = _shuffleOrder[_shufflePos];
+        }
+        else
+        {
+            _currentIndex = (_currentIndex + 1) % CurrentAlbum.Tracks.Count;
+        }
+        // Preserve the current mode: skipping a 30s preview steps to the next
+        // track's preview, never into a full unpurchased track.
+        StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: _isSampleMode);
     }
 
     public void Previous()
     {
-        if (_isSampleMode) return;
         if (CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0) return;
-        _currentIndex = (_currentIndex - 1 + CurrentAlbum.Tracks.Count) % CurrentAlbum.Tracks.Count;
-        StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: false);
+        if (_shuffleMode && _shuffleOrder is { Count: > 0 })
+        {
+            _shufflePos = (_shufflePos - 1 + _shuffleOrder.Count) % _shuffleOrder.Count;
+            _currentIndex = _shuffleOrder[_shufflePos];
+        }
+        else
+        {
+            _currentIndex = (_currentIndex - 1 + CurrentAlbum.Tracks.Count) % CurrentAlbum.Tracks.Count;
+        }
+        StartTrack(CurrentAlbum.Tracks[_currentIndex], sampleMode: _isSampleMode);
+    }
+
+    private void RebuildShuffleOrder()
+    {
+        if (!_shuffleMode || CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0)
+        {
+            _shuffleOrder = null;
+            _shufflePos = -1;
+            return;
+        }
+        var order = Enumerable.Range(0, CurrentAlbum.Tracks.Count)
+            .OrderBy(_ => _shuffleRng.Next())
+            .ToList();
+        // Anchor the playing track at position 0 so Next() visits every other
+        // track before coming back to it.
+        if (_currentIndex >= 0 && order.Remove(_currentIndex))
+            order.Insert(0, _currentIndex);
+        _shuffleOrder = order;
+        _shufflePos = 0;
+    }
+
+    // "Last track" in play order: the album's final index linearly, or the last
+    // slot of the shuffle walk when shuffle is on.
+    private bool IsAtEndOfPlayOrder()
+    {
+        if (CurrentAlbum is null || CurrentAlbum.Tracks.Count == 0) return true;
+        if (_shuffleMode && _shuffleOrder is { Count: > 0 })
+            return _shufflePos >= _shuffleOrder.Count - 1;
+        return _currentIndex >= CurrentAlbum.Tracks.Count - 1;
     }
 
     public void Seek(TimeSpan position)
@@ -277,23 +373,33 @@ public class PlayerService : IPlayerService, IDisposable
         OnUi(() => PositionChanged?.Invoke(this, EventArgs.Empty));
     }
 
-    private void OnEndReached(object? sender, EventArgs e)
+    private void OnEndReached(object? sender, EventArgs e) => OnUi(HandleTrackEnded);
+
+    // internal so the BugHunt harness can exercise the end-of-track decision
+    // without waiting for real audio to finish.
+    internal void HandleTrackEnded()
     {
-        OnUi(() =>
+        MediaEnded?.Invoke(this, EventArgs.Empty);
+        if (_isSampleMode) return;
+        switch (_repeatMode)
         {
-            MediaEnded?.Invoke(this, EventArgs.Empty);
-            if (_isSampleMode) return;
-            switch (_repeatMode)
-            {
-                case RepeatMode.One when CurrentTrack is not null:
-                    StartTrack(CurrentTrack, sampleMode: false);
-                    break;
-                case RepeatMode.All:
-                case RepeatMode.Off:
-                    Next();
-                    break;
-            }
-        });
+            case RepeatMode.One when CurrentTrack is not null:
+                StartTrack(CurrentTrack, sampleMode: false);
+                break;
+            case RepeatMode.All:
+                Next();
+                break;
+            case RepeatMode.Off when !IsAtEndOfPlayOrder():
+                Next();
+                break;
+            default:
+                // Repeat off at the end of the album: stop instead of wrapping
+                // around forever. LibVLC's Ended state never raises Stopped, so
+                // report the idle state ourselves.
+                IsPlaying = false;
+                PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                break;
+        }
     }
 
     private static void OnUi(Action action)
@@ -318,6 +424,13 @@ public class PlayerService : IPlayerService, IDisposable
                 _mp.Volume = s.Volume;
                 _shuffleMode = s.ShuffleMode;
                 _repeatMode = s.RepeatMode;
+                RebuildShuffleOrder();
+                // The fields were set directly (no setters → no events); tell
+                // the UI so sliders/toggles don't keep the previous user's state.
+                VolumeChanged?.Invoke(this, EventArgs.Empty);
+                ShuffleModeChanged?.Invoke(this, EventArgs.Empty);
+                RepeatModeChanged?.Invoke(this, EventArgs.Empty);
+                RestoreLastTrack(s.LastTrackId ?? 0);
             }
             _settingsLoaded = true;
         }
@@ -325,6 +438,28 @@ public class PlayerService : IPlayerService, IDisposable
         {
             _settingsLoaded = false;
         }
+    }
+
+    // "Continue where you left off": surface the user's last track in the
+    // player paused — audio starts only when they press play. Sample/full mode
+    // is re-derived from ownership so a stored preview can't escalate into a
+    // full unpurchased track.
+    private void RestoreLastTrack(int lastTrackId)
+    {
+        if (lastTrackId <= 0 || _catalog is null || CurrentTrack is not null) return;
+        var album = _catalog.Albums.FirstOrDefault(a => a.Tracks.Any(t => t.Id == lastTrackId));
+        var track = album?.Tracks.FirstOrDefault(t => t.Id == lastTrackId);
+        if (album is null || track is null) return;
+        CurrentAlbum = album;
+        _currentIndex = album.Tracks.FindIndex(t => t.Id == lastTrackId);
+        _isSampleMode = !IsAlbumPlayable(album.Id);
+        CurrentTrack = track;
+        RebuildShuffleOrder();
+        OnUi(() =>
+        {
+            MediaOpened?.Invoke(this, EventArgs.Empty);
+            PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     private void PersistSettings(int? lastTrackId = null)
@@ -364,6 +499,13 @@ public class PlayerService : IPlayerService, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        if (_volumePersistDebounce.IsEnabled)
+        {
+            // Flush a pending debounced volume write so closing the app right
+            // after a slider drag doesn't lose the setting.
+            _volumePersistDebounce.Stop();
+            PersistSettings();
+        }
         try { _mp.Stop(); } catch { }
         _mp.Dispose();
         _libVlc.Dispose();

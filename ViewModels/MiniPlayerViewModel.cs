@@ -18,10 +18,20 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private double _volume = 0.7;
     [ObservableProperty] private MusicApp.Models.Album? _currentAlbum;
+    [ObservableProperty] private bool _isShuffleOn;
+    [ObservableProperty] private MusicApp.Models.RepeatMode _repeatMode;
+
+    // Remembered for unmute: toggling mute restores the last audible level.
+    private double _lastAudibleVolume = 0.7;
 
     // While the user is dragging the slider, the timer-driven Progress writes are
     // suppressed so the thumb does not fight the pointer.
     public bool IsScrubbing { get; set; }
+
+    // Distinguishes Progress writes that mirror the player position from
+    // user-initiated ones (keyboard arrows on the slider) — only the latter
+    // commit a seek.
+    private bool _progressFromPlayer;
 
     public MiniPlayerViewModel(IPlayerService player, MainWindowViewModel shell)
     {
@@ -29,12 +39,55 @@ public partial class MiniPlayerViewModel : ViewModelBase
         _shell = shell;
         Volume = _player.Volume;
 
-        _player.MediaOpened += (_, _) => Refresh();
+        _player.MediaOpened += (_, _) =>
+        {
+            Refresh();
+            NextCommand.NotifyCanExecuteChanged();
+            PreviousCommand.NotifyCanExecuteChanged();
+        };
         _player.PositionChanged += (_, _) => Refresh();
         _player.PlaybackStateChanged += (_, _) => IsPlaying = _player.IsPlaying;
+        // Volume can change without the slider: another user logs in and their
+        // persisted level is applied. Keep the slider honest.
+        _player.VolumeChanged += (_, _) => Volume = _player.Volume;
+
+        IsShuffleOn = _player.ShuffleMode;
+        RepeatMode = _player.RepeatMode;
+        _player.ShuffleModeChanged += (_, _) => IsShuffleOn = _player.ShuffleMode;
+        _player.RepeatModeChanged += (_, _) => RepeatMode = _player.RepeatMode;
+
+        // A login-restored "continue where you left off" track loads before
+        // this VM exists — its MediaOpened already fired, so sync up now.
+        if (_player.CurrentTrack is not null) Refresh();
     }
 
-    partial void OnVolumeChanged(double value) => _player.Volume = value;
+    public bool IsMuted => Volume <= 0.001;
+    public string ShuffleTooltip => IsShuffleOn ? "Перемішування ввімкнено" : "Перемішати";
+    public string RepeatTooltip => RepeatMode switch
+    {
+        MusicApp.Models.RepeatMode.All => "Повтор: весь альбом",
+        MusicApp.Models.RepeatMode.One => "Повтор: один трек",
+        _ => "Повтор: вимкнено",
+    };
+
+    partial void OnVolumeChanged(double value)
+    {
+        _player.Volume = value;
+        if (value > 0.001) _lastAudibleVolume = value;
+        OnPropertyChanged(nameof(IsMuted));
+    }
+
+    partial void OnIsShuffleOnChanged(bool value) => OnPropertyChanged(nameof(ShuffleTooltip));
+    partial void OnRepeatModeChanged(MusicApp.Models.RepeatMode value) => OnPropertyChanged(nameof(RepeatTooltip));
+
+    partial void OnProgressChanged(double value)
+    {
+        // Keyboard arrows on the slider change Value with no pointer events,
+        // so the press/release commit flow never fires — commit here instead.
+        // Pointer scrubs (IsScrubbing) and player-driven mirror writes skip.
+        if (_progressFromPlayer || IsScrubbing) return;
+        CommitSeek(value);
+    }
 
     private void Refresh()
     {
@@ -53,14 +106,19 @@ public partial class MiniPlayerViewModel : ViewModelBase
             // Clamp: the player can report a position slightly past Duration on
             // short samples (e.g. 0:33 over a 0:30 clip), which otherwise drags
             // the thumb past the track end.
+            _progressFromPlayer = true;
             Progress = _player.Duration.TotalSeconds <= 0
                 ? 0
                 : Math.Clamp(_player.Position.TotalSeconds / _player.Duration.TotalSeconds * 100.0, 0, 100);
+            _progressFromPlayer = false;
         }
         IsPlaying = _player.IsPlaying;
     }
 
-    private static string Format(TimeSpan ts) => $"{(int)ts.TotalMinutes}:{ts.Seconds:00}";
+    // Hour-long tracks need h:mm:ss — "75:30" reads as a typo.
+    internal static string Format(TimeSpan ts) => ts.TotalHours >= 1
+        ? $"{(int)ts.TotalHours}:{ts.Minutes:00}:{ts.Seconds:00}"
+        : $"{(int)ts.TotalMinutes}:{ts.Seconds:00}";
 
     public void CommitSeek(double progressPercent)
     {
@@ -70,9 +128,21 @@ public partial class MiniPlayerViewModel : ViewModelBase
         _player.Seek(TimeSpan.FromMilliseconds(ms));
     }
 
+    // No album queue (e.g. a single local file) → nothing to skip to; grey the
+    // buttons out instead of leaving active-looking dead controls.
+    private bool HasQueue => _player.CurrentAlbum is not null;
+
     [RelayCommand] private void PlayPause() => _player.TogglePlayPause();
-    [RelayCommand] private void Next() => _player.Next();
-    [RelayCommand] private void Previous() => _player.Previous();
+    [RelayCommand(CanExecute = nameof(HasQueue))] private void Next() => _player.Next();
+    [RelayCommand(CanExecute = nameof(HasQueue))] private void Previous() => _player.Previous();
+    [RelayCommand] private void ToggleShuffle() => _player.ShuffleMode = !_player.ShuffleMode;
+    [RelayCommand] private void CycleRepeat() => _player.RepeatMode = _player.RepeatMode switch
+    {
+        MusicApp.Models.RepeatMode.Off => MusicApp.Models.RepeatMode.All,
+        MusicApp.Models.RepeatMode.All => MusicApp.Models.RepeatMode.One,
+        _ => MusicApp.Models.RepeatMode.Off,
+    };
+    [RelayCommand] private void ToggleMute() => Volume = IsMuted ? _lastAudibleVolume : 0;
     [RelayCommand] private void Expand() => _shell.ExpandMiniPlayerCommand.Execute(null);
     [RelayCommand] private void Close() => _shell.CloseMiniPlayerCommand.Execute(null);
 }

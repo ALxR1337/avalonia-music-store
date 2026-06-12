@@ -45,10 +45,16 @@ public class CatalogRedesignTests
         var cvm = h.Nav!.CurrentView as CatalogViewModel;
         Assert.NotNull(cvm);
 
-        // The new rows are populated from seeded data / static shortcuts.
+        // The new rows are populated from seeded data. All three price tiers must
+        // survive the empty-bucket culling — i.e. the seed populates each of them —
+        // and every chip advertises how many albums it leads to.
         Assert.NotEmpty(cvm!.Artists);
         Assert.Equal(3, cvm.PriceRanges.Count);
-        Assert.Equal(2, cvm.RatingShortcuts.Count);
+        Assert.All(cvm.PriceRanges, r => Assert.Contains("альбом", r.Subtitle));
+        // Rating chips are culled like price tiers when empty, and carry live
+        // counts the same way — at least the 4.0 bucket must survive the seed.
+        Assert.NotEmpty(cvm.RatingShortcuts);
+        Assert.All(cvm.RatingShortcuts, r => Assert.Contains("альбом", r.Subtitle));
     }
 
     [AvaloniaFact]
@@ -57,16 +63,19 @@ public class CatalogRedesignTests
         var h = new Harness();
         var cvm = OpenCatalog(h);
 
-        var upTo500 = cvm.PriceRanges.First();          // "ціна:..500"
-        cvm.OpenSearchCommand.Execute(upTo500.Query);
+        // The tier bounds are derived from the catalog at runtime, so read the
+        // bound back out of the chip's own query ("ціна:..N") instead of pinning it.
+        var budget = cvm.PriceRanges.First();
+        var bound = ParseBound(budget.Query);
+        cvm.OpenSearchCommand.Execute(budget.Query);
         Dispatcher.UIThread.RunJobs();
 
         var svm = h.Nav!.CurrentView as SearchResultsViewModel;
         Assert.NotNull(svm);
         Assert.Null(svm!.PriceFrom);
-        Assert.Equal(500m, svm.PriceTo);
+        Assert.Equal(bound, svm.PriceTo);
         Assert.Contains("Ціна", svm.HeaderLabel);
-        Assert.Contains("500", svm.HeaderLabel);
+        Assert.Contains($"{bound:0}", svm.HeaderLabel);
     }
 
     [AvaloniaFact]
@@ -75,15 +84,22 @@ public class CatalogRedesignTests
         var h = new Harness();
         var cvm = OpenCatalog(h);
 
-        var premium = cvm.PriceRanges.Last();           // "ціна:1000.."
+        var premium = cvm.PriceRanges.Last();           // "ціна:N.."
+        var bound = ParseBound(premium.Query);
         cvm.OpenSearchCommand.Execute(premium.Query);
         Dispatcher.UIThread.RunJobs();
 
         var svm = h.Nav!.CurrentView as SearchResultsViewModel;
         Assert.NotNull(svm);
-        Assert.Equal(1000m, svm!.PriceFrom);
+        Assert.Equal(bound, svm!.PriceFrom);
         Assert.Null(svm.PriceTo);
     }
+
+    // Extracts the single numeric bound from a one-sided chip query
+    // ("ціна:..400" or "ціна:850..").
+    private static decimal ParseBound(string query) =>
+        decimal.Parse(query.Replace("ціна:", "").Replace("..", ""),
+            System.Globalization.CultureInfo.InvariantCulture);
 
     [AvaloniaFact]
     public void Rating_shortcut_opens_search_filtered_by_min_rating()
@@ -91,13 +107,17 @@ public class CatalogRedesignTests
         var h = new Harness();
         var cvm = OpenCatalog(h);
 
-        var topRated = cvm.RatingShortcuts.First();      // "рейтинг:>=4.5"
+        // Read the threshold back out of the chip's own query ("рейтинг:>=N"):
+        // empty buckets are culled, so the first chip is not pinned to 4.5.
+        var topRated = cvm.RatingShortcuts.First();
+        var threshold = double.Parse(topRated.Query.Replace("рейтинг:>=", ""),
+            System.Globalization.CultureInfo.InvariantCulture);
         cvm.OpenSearchCommand.Execute(topRated.Query);
         Dispatcher.UIThread.RunJobs();
 
         var svm = h.Nav!.CurrentView as SearchResultsViewModel;
         Assert.NotNull(svm);
-        Assert.Equal(4.5, svm!.MinRating);
+        Assert.Equal(threshold, svm!.MinRating);
         Assert.Contains("Рейтинг", svm.HeaderLabel);
     }
 
@@ -143,7 +163,7 @@ public class CatalogRedesignTests
         ClickAt(h, card, new Point(193, 60));
 
         var pvm = Assert.IsType<ProductViewModel>(h.Nav!.CurrentView);
-        Assert.Equal(album.PrimaryProduct.Id, pvm.Product!.Id);
+        Assert.Equal(album.PrimaryProduct!.Id, pvm.Product!.Id);
     }
 
     [AvaloniaFact]
@@ -152,17 +172,18 @@ public class CatalogRedesignTests
         var h = OpenCatalogForShelf();
         var (card, album) = FirstDualFormatCard(h);
 
-        // The nested "CD" price button must win the click over the card-wide button:
-        // clicking it navigates to the CD edition, not the primary (vinyl) one.
+        // The nested "CD" price button must win the click over the card-wide
+        // button: it adds the CD edition to the cart (Wave Catalog-UX-Audit
+        // made price rows the buy action) instead of opening the album page.
         var cdButton = card.GetVisualDescendants()
             .OfType<Button>()
             .First(b => b.Classes.Contains("ghost")
                      && b.CommandParameter is Product { Format: ProductFormat.CD });
         ClickAt(h, cdButton, new Point(cdButton.Bounds.Width / 2, cdButton.Bounds.Height / 2));
 
-        var pvm = Assert.IsType<ProductViewModel>(h.Nav!.CurrentView);
-        Assert.Equal(album.Cd!.Id, pvm.Product!.Id);
-        Assert.NotEqual(album.PrimaryProduct.Id, pvm.Product!.Id);
+        var cvm = Assert.IsType<CatalogViewModel>(h.Nav!.CurrentView);
+        Assert.Contains(h.Cart!.Items, i => i.ProductId == album.Cd!.Id);
+        Assert.Contains("додано в кошик", cvm.ToastMessage);
     }
 
     // Opens the catalog in a window tall enough that the whole page (incl. the bottom

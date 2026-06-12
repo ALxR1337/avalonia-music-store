@@ -53,7 +53,10 @@ public sealed record AlbumHit(
     Product? PrimaryProduct,
     double Score,
     AlbumMatchKind Match,
-    IReadOnlyList<MatchedTrack> MatchedTracks)
+    IReadOnlyList<MatchedTrack> MatchedTracks,
+    // True when several editions at different prices passed the active filters,
+    // so the card's price is the cheapest of them, not "the" price.
+    bool PriceIsFrom = false)
 {
     public bool HasMatchedTracks => MatchedTracks.Count > 0;
 
@@ -61,6 +64,12 @@ public sealed record AlbumHit(
     public Track? FirstMatchedTrack => MatchedTracks.Count > 0 ? MatchedTracks[0].Track : null;
 
     public decimal? Price => PrimaryProduct?.Price;
+
+    // "від 250 ₴" while multiple editions qualify; the bare price once the
+    // filters (e.g. a chosen format) pin the card to a single edition.
+    public string? PriceLabel => Price is decimal p
+        ? (PriceIsFrom ? $"від {p:0} ₴" : $"{p:0} ₴")
+        : null;
 }
 
 public sealed class SearchResults
@@ -78,4 +87,7 @@ public sealed class SearchResults
     public int TotalCount { get; init; }
 }
 
-public sealed record AutocompleteHit(string Text, string Kind, int? EntityId = null, string? ImagePath = null);
+// Kind: "album" | "track" (EntityId still carries the album id — the store
+// sells albums) | "artist" | "history". Subtitle is the human-readable,
+// localized second line («альбом · Kanye West», «трек · з альбому «…»»).
+public sealed record AutocompleteHit(string Text, string Kind, int? EntityId = null, string? ImagePath = null, string? Subtitle = null);

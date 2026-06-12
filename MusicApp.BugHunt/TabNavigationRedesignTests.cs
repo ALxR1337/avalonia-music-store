@@ -146,8 +146,8 @@ public class TabNavigationRedesignTests
         Assert.Equal(NavTarget.Catalog, h.Nav!.CurrentSection);
 
         var albumId = h.Catalog!.Products.First().AlbumId;
-        shell.PickSuggestionCommand.Execute(
-            new MusicApp.Services.Search.AutocompleteHit("any", "album", albumId));
+        shell.PickSuggestionCommand.Execute(new SuggestionItemViewModel(
+            new MusicApp.Services.Search.AutocompleteHit("any", "album", albumId)));
         Dispatcher.UIThread.RunJobs();
 
         Assert.Equal(NavTarget.Product, h.Nav.CurrentTarget);

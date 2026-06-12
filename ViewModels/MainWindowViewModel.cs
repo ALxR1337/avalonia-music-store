@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,6 +10,21 @@ using MusicApp.Services;
 using MusicApp.Services.Search;
 
 namespace MusicApp.ViewModels;
+
+// One row of the search-box popup. Wraps the service hit with the keyboard
+// highlight flag (↑/↓ move it, Enter picks the highlighted row).
+public partial class SuggestionItemViewModel : ObservableObject
+{
+    public SuggestionItemViewModel(AutocompleteHit hit) => Hit = hit;
+
+    public AutocompleteHit Hit { get; }
+    public string Text => Hit.Text;
+    public string Kind => Hit.Kind;
+    public string? ImagePath => Hit.ImagePath;
+    public string? Subtitle => Hit.Subtitle;
+
+    [ObservableProperty] private bool _isHighlighted;
+}
 
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -18,6 +35,13 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ICatalogService _catalog;
     private readonly ISearchService? _search;
     private DispatcherTimer? _autocompleteTimer;
+
+    // True while SearchQuery is being set programmatically (suggestion pick,
+    // sync from the results page) — those writes must not re-arm the debounce
+    // timer, or the popup re-opens on top of whatever page came next.
+    private bool _suppressSuggestions;
+    private int _highlightedSuggestion = -1;
+    private SearchResultsViewModel? _currentSearchVm;
 
     [ObservableProperty] private ViewModelBase? _currentView;
     [ObservableProperty] private NavTarget _currentTarget = NavTarget.Catalog;
@@ -40,7 +64,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _isLoginVisible;
     [ObservableProperty] private bool _isUserMenuOpen;
 
-    public ObservableCollection<AutocompleteHit> Suggestions { get; } = new();
+    public ObservableCollection<SuggestionItemViewModel> Suggestions { get; } = new();
 
     /// <summary>Sub-VM for the in-app login overlay card.</summary>
     public LoginViewModel Login { get; }
@@ -76,12 +100,24 @@ public partial class MainWindowViewModel : ViewModelBase
             // out) so the View can restore it once layout settles. Fresh pages
             // carry 0 → open at the top; back/forward carry the saved position.
             RestoreScroll?.Invoke(_nav.CurrentScrollOffset);
+            SyncSearchBoxWith(vm as SearchResultsViewModel);
         };
 
         RefreshUserInfo();
         _auth.CurrentUserChanged += (_, _) => RefreshUserInfo();
 
+        // A track restored from PlayerSettings ("continue where you left off")
+        // may already be loaded before this VM exists — surface the bar for it.
+        IsMiniPlayerVisible = _player.CurrentTrack is not null;
+
         _player.MediaOpened += (_, _) => IsMiniPlayerVisible = true;
+        // Invariant: whenever audio is audible the bar is on screen — it is the
+        // app's only transport surface (the Player page has no controls), so a
+        // hidden bar + playing audio would leave the user without pause/seek.
+        _player.PlaybackStateChanged += (_, _) =>
+        {
+            if (_player.IsPlaying) IsMiniPlayerVisible = true;
+        };
 
         CartCount = _cart.ItemCount;
         _cart.CartChanged += (_, _) => CartCount = _cart.ItemCount;
@@ -95,7 +131,6 @@ public partial class MainWindowViewModel : ViewModelBase
     // pages (Product) keep their parent tab lit.
     public bool IsCatalogActive => CurrentSection == NavTarget.Catalog;
     public bool IsCartActive => CurrentSection == NavTarget.Cart;
-    public bool IsOrdersActive => CurrentSection == NavTarget.Orders;
     public bool IsProfileActive => CurrentSection == NavTarget.Profile;
     public bool IsPlayerActive => CurrentSection == NavTarget.Player;
     public bool IsAdminActive => CurrentSection == NavTarget.Admin;
@@ -116,7 +151,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsCatalogActive));
         OnPropertyChanged(nameof(IsCartActive));
-        OnPropertyChanged(nameof(IsOrdersActive));
         OnPropertyChanged(nameof(IsProfileActive));
         OnPropertyChanged(nameof(IsPlayerActive));
         OnPropertyChanged(nameof(IsAdminActive));
@@ -145,8 +179,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Navigate(string target)
     {
         IsUserMenuOpen = false;
-        if (Enum.TryParse<NavTarget>(target, out var t))
-            _nav.NavigateTo(t);
+        if (!Enum.TryParse<NavTarget>(target, out var t)) return;
+        // Re-clicking «Пошук» while already on the results page must not wipe
+        // the user's query and filters — unlike the other sections this page
+        // is stateful, and "reset everything" is never what that click means.
+        if (t == NavTarget.SearchResults && _nav.CurrentView is SearchResultsViewModel) return;
+        _nav.NavigateTo(t);
     }
 
     [RelayCommand]
@@ -161,23 +199,37 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SubmitSearch()
     {
-        if (string.IsNullOrWhiteSpace(SearchQuery)) return;
+        // Kill the pending debounce tick FIRST — otherwise it fires up to
+        // 200ms later and drops the popup on top of the results page.
+        _autocompleteTimer?.Stop();
         IsAutocompleteOpen = false;
+        // Enter in the EMPTY box opens browse-all, same as the sidebar tab —
+        // unless the results page is already showing (keep its state).
+        if (string.IsNullOrWhiteSpace(SearchQuery) && _nav.CurrentView is SearchResultsViewModel) return;
         _nav.NavigateTo(NavTarget.SearchResults, SearchQuery);
     }
 
     [RelayCommand]
-    private void PickSuggestion(AutocompleteHit hit)
+    private void PickSuggestion(SuggestionItemViewModel? item)
     {
-        if (hit is null) return;
+        if (item is null) return;
+        var hit = item.Hit;
+
+        _suppressSuggestions = true;
         SearchQuery = hit.Text;
+        _suppressSuggestions = false;
+        _autocompleteTimer?.Stop();
         IsAutocompleteOpen = false;
-        if (hit.Kind == "album" && hit.EntityId is int albumId)
+
+        // An album/track row opens the product page (track hits carry their
+        // album's id — the album is the purchasable unit). Reached through the
+        // search box, so it belongs to the Пошук tab. Prefer an active edition:
+        // suggestions must not land on a deactivated product the search results
+        // themselves would hide.
+        if (hit.Kind is "album" or "track" && hit.EntityId is int albumId)
         {
-            // Open the product page for the first product of this album (track hits
-            // are re-keyed onto their album upstream). Reached through the search
-            // box, so it belongs to the Пошук tab.
-            var product = System.Linq.Enumerable.FirstOrDefault(_catalog.Products, p => p.AlbumId == albumId);
+            var product = _catalog.Products.FirstOrDefault(p => p.AlbumId == albumId && p.IsActive)
+                       ?? _catalog.Products.FirstOrDefault(p => p.AlbumId == albumId);
             if (product is not null)
             {
                 _nav.NavigateTo(NavTarget.Product, product.Id, NavTarget.SearchResults);
@@ -191,16 +243,65 @@ public partial class MainWindowViewModel : ViewModelBase
             _nav.NavigateTo(NavTarget.SearchResults, $"виконавець:\"{hit.Text}\"");
             return;
         }
+        // History rows and fallbacks run as a plain text search.
         _nav.NavigateTo(NavTarget.SearchResults, hit.Text);
+    }
+
+    /// <summary>Enter in the search box: picks the keyboard-highlighted
+    /// suggestion if there is one, otherwise submits the typed query.</summary>
+    public void SubmitOrPickHighlighted()
+    {
+        if (IsAutocompleteOpen
+            && _highlightedSuggestion >= 0 && _highlightedSuggestion < Suggestions.Count)
+            PickSuggestion(Suggestions[_highlightedSuggestion]);
+        else
+            SubmitSearch();
+    }
+
+    /// <summary>↑/↓ in the search box: moves the highlight, wrapping around.</summary>
+    public void MoveSuggestionHighlight(int delta)
+    {
+        if (Suggestions.Count == 0) return;
+        var i = _highlightedSuggestion + delta;
+        if (i < 0) i = Suggestions.Count - 1;
+        if (i >= Suggestions.Count) i = 0;
+        for (var j = 0; j < Suggestions.Count; j++)
+            Suggestions[j].IsHighlighted = j == i;
+        _highlightedSuggestion = i;
+    }
+
+    public void CloseAutocomplete()
+    {
+        _autocompleteTimer?.Stop();
+        IsAutocompleteOpen = false;
+    }
+
+    [RelayCommand]
+    private void ClearSearch()
+    {
+        _autocompleteTimer?.Stop();
+        _suppressSuggestions = true;
+        SearchQuery = string.Empty;
+        _suppressSuggestions = false;
+        ResetSuggestions();
+        IsAutocompleteOpen = false;
+    }
+
+    /// <summary>Focus lands in an (almost) empty search box → offer the
+    /// user's recent queries instead of nothing (guests have no history).</summary>
+    public void OnSearchBoxFocused()
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery) || SearchQuery.Trim().Length < 2)
+            ShowHistorySuggestions();
     }
 
     partial void OnSearchQueryChanged(string value)
     {
-        if (_search is null) return;
-        if (string.IsNullOrWhiteSpace(value) || value.Length < 2)
+        if (_search is null || _suppressSuggestions) return;
+        ResetSuggestions();
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < 2)
         {
-            Suggestions.Clear();
-            IsAutocompleteOpen = false;
+            ShowHistorySuggestions();
             return;
         }
 
@@ -216,13 +317,73 @@ public partial class MainWindowViewModel : ViewModelBase
         _autocompleteTimer?.Stop();
         if (_search is null) return;
         var hits = _search.Autocomplete(SearchQuery);
-        Suggestions.Clear();
-        foreach (var h in hits) Suggestions.Add(h);
+        ResetSuggestions();
+        foreach (var h in hits) Suggestions.Add(new SuggestionItemViewModel(h));
         IsAutocompleteOpen = Suggestions.Count > 0;
     }
 
+    private void ShowHistorySuggestions()
+    {
+        ResetSuggestions();
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        if (_search is null || userId <= 0)
+        {
+            IsAutocompleteOpen = false;
+            return;
+        }
+        foreach (var q in _search.RecentQueries(userId))
+            Suggestions.Add(new SuggestionItemViewModel(
+                new AutocompleteHit(q, "history", null, null, "нещодавній пошук")));
+        IsAutocompleteOpen = Suggestions.Count > 0;
+    }
+
+    private void ResetSuggestions()
+    {
+        Suggestions.Clear();
+        _highlightedSuggestion = -1;
+    }
+
+    // Keeps the title-bar box honest about what the current results page shows:
+    // a genre-tile navigation clears it, «Чи мали ви на увазі» updates it —
+    // before this, Enter could silently re-run a stale query.
+    private void SyncSearchBoxWith(SearchResultsViewModel? searchVm)
+    {
+        if (_currentSearchVm is not null)
+            _currentSearchVm.PropertyChanged -= OnSearchVmPropertyChanged;
+        _currentSearchVm = searchVm;
+        if (_currentSearchVm is null) return;
+        _currentSearchVm.PropertyChanged += OnSearchVmPropertyChanged;
+        SetSearchBoxText(_currentSearchVm.Query);
+    }
+
+    private void OnSearchVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SearchResultsViewModel.Query) && _currentSearchVm is not null)
+            SetSearchBoxText(_currentSearchVm.Query);
+    }
+
+    private void SetSearchBoxText(string text)
+    {
+        _autocompleteTimer?.Stop();
+        _suppressSuggestions = true;
+        SearchQuery = text;
+        _suppressSuggestions = false;
+        IsAutocompleteOpen = false;
+    }
+
     [RelayCommand]
-    private void CloseMiniPlayer() => IsMiniPlayerVisible = false;
+    private void CloseMiniPlayer()
+    {
+        // ✕ must actually silence the app: hiding the bar while audio keeps
+        // playing would leave no visible way to stop it (the Player page has
+        // no transport controls).
+        _player.Stop();
+        IsMiniPlayerVisible = false;
+    }
+
+    // Gate for the global hotkeys: media keys and Space only act (and swallow
+    // the keystroke) when something is actually loaded in the player.
+    public bool HasLoadedTrack => _player.CurrentTrack is not null;
 
     // Triggered by the global Space hotkey (see MainWindow.OnGlobalKeyDown).
     [RelayCommand]
@@ -246,9 +407,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ExpandMiniPlayer()
     {
-        IsMiniPlayerVisible = false;
         // Land on the album currently playing if there is one — otherwise on
-        // the library grid.
+        // the library grid. The bar stays visible: the album page deliberately
+        // has no transport controls, so the bar remains the only pause/seek UI.
         _nav.NavigateTo(NavTarget.Player, _player.CurrentAlbum);
     }
 

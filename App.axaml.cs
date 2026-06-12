@@ -25,6 +25,11 @@ public partial class App : Application
                 Fts5Initializer.Ensure(db);
             }
 
+            // Declared before the nav factories so closures can capture it; the
+            // Player factory runs only after navigation starts, when the shell
+            // VM below is already assigned.
+            MainWindowViewModel? mainVm = null;
+
             var nav = new NavigationService();
             var auth = new AuthService(dbFactory);
             var catalog = new CatalogService(dbFactory);
@@ -45,13 +50,12 @@ public partial class App : Application
             nav.Register(NavTarget.Cart,
                 _ => new CartViewModel(cart, nav, auth, catalog));
             nav.Register(NavTarget.Profile,
-                _ => new ProfileViewModel(auth, catalog, search, nav));
-            nav.Register(NavTarget.Orders,
-                _ => new OrdersViewModel(catalog, auth));
+                _ => new ProfileViewModel(auth, catalog, search, nav, cart));
             nav.Register(NavTarget.Player,
-                param => new PlayerViewModel(player, catalog, auth, likes, nav, files, param as Album));
+                param => new PlayerViewModel(player, catalog, auth, likes, nav, files, param as Album,
+                    requestLogin: () => mainVm?.ShowLogin()));
             nav.Register(NavTarget.Admin,
-                _ => new AdminViewModel(catalog, files));
+                _ => new AdminViewModel(catalog, files, auth));
 
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
@@ -60,7 +64,7 @@ public partial class App : Application
             // pop the login card on top of the (guest) app.
             var restored = auth.TryRestoreSession();
 
-            var mainVm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
+            mainVm = new MainWindowViewModel(nav, auth, cart, player, catalog, search);
             var mainWindow = new MainWindow { DataContext = mainVm };
             desktop.MainWindow = mainWindow;
 

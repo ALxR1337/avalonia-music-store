@@ -18,15 +18,18 @@
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="20" Margin="32,24,32,24">
                     <TextBlock Classes="h2" Text="Ваша бібліотека"/>
-                    <ItemsControl ItemsSource="{Binding PurchasedAlbums}">
+                    <!-- Albums + the "play a local file" tile share one WrapPanel,
+                         so the tile flows after the last album card instead of
+                         dropping onto its own row. -->
+                    <ItemsControl ItemsSource="{Binding LibraryItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Horizontal" ItemWidth="180" ItemHeight="240"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
+                        <ItemsControl.DataTemplates>
                             <DataTemplate DataType="m:Album">
-                                <Button Classes="ghost" Padding="8" Margin="0,0,12,12"
+                                <Button Classes="ghost" Padding="8"
                                         Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
                                     <StackPanel Spacing="10" Width="156">
@@ -52,36 +55,36 @@
                                     </StackPanel>
                                 </Button>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AddLocalFileTile">
+                                <Button Classes="ghost" Padding="8"
+                                        Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).AddLocalFilesCommand}">
+                                    <StackPanel Spacing="10" Width="156">
+                                        <Border Width="156" Height="156"
+                                                CornerRadius="{StaticResource RadiusS}"
+                                                Background="{StaticResource BgElevatedBrush}"
+                                                BorderBrush="{StaticResource DividerSoftBrush}"
+                                                BorderThickness="1">
+                                            <TextBlock Text="+"
+                                                       FontSize="64" FontWeight="Light"
+                                                       Foreground="{StaticResource FgSecondaryBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Відтворити локальний аудіофайл"
+                                                   FontSize="12" Classes="muted"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.DataTemplates>
                     </ItemsControl>
 
-                    <!-- "+ add" tile, same card footprint as albums -->
-                    <Button Classes="ghost" Padding="8"
-                            HorizontalAlignment="Left"
-                            Command="{Binding AddLocalFilesCommand}">
-                        <StackPanel Spacing="10" Width="156">
-                            <Border Width="156" Height="156"
-                                    CornerRadius="{StaticResource RadiusS}"
-                                    Background="{StaticResource BgElevatedBrush}"
-                                    BorderBrush="{StaticResource DividerSoftBrush}"
-                                    BorderThickness="1">
-                                <TextBlock Text="+"
-                                           FontSize="64" FontWeight="Light"
-                                           Foreground="{StaticResource FgSecondaryBrush}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="Додати файли / плейлист / папку"
-                                       FontSize="12" Classes="muted"
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Button>
-
                     <TextBlock Classes="muted"
-                               Text="Поки немає куплених альбомів. Купіть щось у каталозі або додайте локальні файли."
+                               Text="Поки немає куплених альбомів. Купіть щось у каталозі або відтворіть локальний файл."
                                TextWrapping="Wrap"
                                IsVisible="{Binding !HasPurchasedAlbums}"
-                               MaxWidth="480"/>
+                               MaxWidth="480"
+                               HorizontalAlignment="Left"/>
                 </StackPanel>
             </ScrollViewer>
 
@@ -166,13 +169,30 @@
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">
                                 <Button Classes="play-circle" Width="48" Height="48" CornerRadius="24"
                                         Command="{Binding PlaySelectedAlbumCommand}"
-                                        ToolTip.Tip="Слухати альбом">
-                                    <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
-                                          Width="16" Height="16" Stretch="Uniform"/>
+                                        ToolTip.Tip="{Binding PlayButtonTip}">
+                                    <Panel>
+                                        <Path Data="{StaticResource IconPlay}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                                              Width="16" Height="16" Stretch="Uniform"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              IsVisible="{Binding !IsSelectedAlbumPlaying}"/>
+                                        <Path Data="{StaticResource IconPause}" Fill="{StaticResource OnAccentBrush}" Stroke="Transparent"
+                                              Width="12" Height="16" Stretch="Uniform"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              IsVisible="{Binding IsSelectedAlbumPlaying}"/>
+                                    </Panel>
+                                </Button>
+                                <Button Classes="icon" Width="40" Height="40"
+                                        Command="{Binding ToggleAlbumLikeCommand}"
+                                        ToolTip.Tip="Подобається">
+                                    <Path Width="20" Height="20"
+                                          Classes="icon"
+                                          Classes.filled="{Binding IsAlbumLiked}"
+                                          Classes.accent="{Binding IsAlbumLiked}"
+                                          Data="{StaticResource IconHeart}"/>
                                 </Button>
                                 <Button Classes="icon" Width="40" Height="40"
                                         Command="{Binding ToggleShuffleCommand}"
-                                        ToolTip.Tip="Перемішати">
+                                        ToolTip.Tip="{Binding ShuffleTooltip}">
                                     <Path Width="20" Height="20"
                                           Classes="icon"
                                           Classes.accent="{Binding IsShuffleOn}"
@@ -180,31 +200,52 @@
                                 </Button>
                                 <Button Classes="icon" Width="40" Height="40"
                                         Command="{Binding CycleRepeatCommand}"
-                                        ToolTip.Tip="Повтор">
+                                        ToolTip.Tip="{Binding RepeatTooltip}">
                                     <Path Width="20" Height="20"
                                           Classes="icon"
                                           Classes.accent="{Binding RepeatMode, Converter={StaticResource RepeatModeNotOff}}"
                                           Data="{Binding RepeatMode, Converter={StaticResource RepeatModeToIcon}}"/>
                                 </Button>
+                                <Button Classes="outline" VerticalAlignment="Center"
+                                        Padding="18,9"
+                                        Command="{Binding GoToAlbumProductCommand}"
+                                        IsVisible="{Binding ShowBuyCta}"
+                                        ToolTip.Tip="Відкрити сторінку товару">
+                                    <TextBlock Text="Купити альбом"/>
+                                </Button>
                             </StackPanel>
+
+                            <!-- Unowned album: be honest that ▶ plays previews, not full tracks -->
+                            <TextBlock Classes="muted" FontSize="12" Margin="0,4,0,0"
+                                       Text="Альбому немає у вашій бібліотеці — відтворюються 30-секундні семпли"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding ShowSampleHint}"/>
                         </StackPanel>
                     </Grid>
 
                     <!-- Description -->
                     <StackPanel IsVisible="{Binding HasDescription}" Spacing="6" MaxWidth="780" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding AlbumDescription}" TextWrapping="Wrap"
+                        <TextBlock x:Name="DescClamped"
+                                   Text="{Binding AlbumDescription}" TextWrapping="Wrap"
                                    MaxLines="3" Classes="muted"
                                    IsVisible="{Binding !IsDescriptionExpanded}"/>
                         <TextBlock Text="{Binding AlbumDescription}" TextWrapping="Wrap" Classes="muted"
                                    IsVisible="{Binding IsDescriptionExpanded}"/>
+                        <!-- Single toggle button, visible only when the clamp hides
+                             text (or while expanded). IsVisible sits on the Button
+                             itself — no invisible tab stop. -->
                         <Button Classes="text-link" Padding="0" HorizontalAlignment="Left"
-                                Command="{Binding ToggleDescriptionCommand}">
-                            <TextBlock Text="Показати повністю" IsVisible="{Binding !IsDescriptionExpanded}"/>
+                                Command="{Binding ToggleDescriptionCommand}"
+                                IsVisible="{Binding ShowDescriptionToggle}">
+                            <TextBlock Text="{Binding DescriptionToggleText}"/>
                         </Button>
-                        <Button Classes="text-link" Padding="0" HorizontalAlignment="Left"
-                                Command="{Binding ToggleDescriptionCommand}">
-                            <TextBlock Text="Згорнути" IsVisible="{Binding IsDescriptionExpanded}"/>
-                        </Button>
+                        <!-- Zero-height measuring twin (same width, no MaxLines):
+                             its desired height tells the code-behind whether the
+                             3-line clamp actually hides anything. -->
+                        <Border Height="0" ClipToBounds="True">
+                            <TextBlock x:Name="DescMeasure"
+                                       Text="{Binding AlbumDescription}" TextWrapping="Wrap" Classes="muted"/>
+                        </Border>
                     </StackPanel>
 
                     <!-- ===== Tracklist ===== -->
@@ -216,48 +257,136 @@
                             <ItemsControl ItemsSource="{Binding Tracks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TrackRowViewModel">
-                                        <Border CornerRadius="{StaticResource RadiusS}" Padding="6,4" Margin="0,1"
+                                        <!-- The whole row is one click target — the number, the gap and
+                                             the duration used to be dead zones. The like heart nests
+                                             inside and swallows its own clicks via pointer capture. -->
+                                        <Border CornerRadius="{StaticResource RadiusS}" Margin="0,1"
                                                 Background="{Binding IsCurrent, Converter={StaticResource BoolToHighlightBrush}}">
-                                            <Grid ColumnDefinitions="36,*,Auto,Auto">
-                                                <Grid Grid.Column="0">
-                                                    <TextBlock Text="{Binding Position}"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                               Classes="muted"
-                                                               IsVisible="{Binding !IsCurrent}"/>
-                                                    <Path Classes="icon sm accent filled"
-                                                          Data="{StaticResource IconCircleFilled}"
-                                                          Width="10" Height="10"
-                                                          HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                          IsVisible="{Binding IsCurrent}"/>
-                                                </Grid>
-                                                <Button Grid.Column="1" Classes="ghost"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Left" Padding="8,6"
-                                                        Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).PlayTrackCommand}"
-                                                        CommandParameter="{Binding}">
-                                                    <TextBlock Text="{Binding Title}"
+                                            <Button Classes="ghost" Padding="6,4"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).PlayTrackCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Grid ColumnDefinitions="36,*,Auto,Auto">
+                                                    <Grid Grid.Column="0">
+                                                        <TextBlock Text="{Binding Position}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                   Classes="muted"
+                                                                   IsVisible="{Binding !IsCurrent}"/>
+                                                        <Path Classes="icon sm accent filled"
+                                                              Data="{StaticResource IconCircleFilled}"
+                                                              Width="10" Height="10"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              IsVisible="{Binding IsCurrent}"/>
+                                                    </Grid>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                                               Margin="8,0,0,0" VerticalAlignment="Center"
                                                                FontWeight="{Binding IsCurrent, Converter={StaticResource BoolToFontWeight}}"
                                                                Foreground="{Binding IsCurrent, Converter={StaticResource BoolToCurrentForeground}}"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                </Button>
-                                                <Button Grid.Column="2" Classes="icon" Width="32" Height="32"
-                                                        Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).ToggleTrackLikeCommand}"
-                                                        CommandParameter="{Binding}">
-                                                    <Path Width="16" Height="16"
-                                                          Classes="icon"
-                                                          Classes.filled="{Binding IsLiked}"
-                                                          Classes.accent="{Binding IsLiked}"
-                                                          Data="{StaticResource IconHeart}"/>
-                                                </Button>
-                                                <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}"
-                                                           Classes="muted" VerticalAlignment="Center"
-                                                           Margin="10,0,8,0" Width="42" TextAlignment="Right"/>
-                                            </Grid>
+                                                    <Button Grid.Column="2" Classes="icon" Width="32" Height="32"
+                                                            Command="{Binding $parent[ItemsControl].((vm:PlayerViewModel)DataContext).ToggleTrackLikeCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip.Tip="Подобається">
+                                                        <Path Width="16" Height="16"
+                                                              Classes="icon"
+                                                              Classes.filled="{Binding IsLiked}"
+                                                              Classes.accent="{Binding IsLiked}"
+                                                              Data="{StaticResource IconHeart}"/>
+                                                    </Button>
+                                                    <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}"
+                                                               Classes="muted" VerticalAlignment="Center"
+                                                               Margin="10,0,8,0" MinWidth="42" TextAlignment="Right"/>
+                                                </Grid>
+                                            </Button>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Border>
+                    </StackPanel>
+
+                    <!-- ===== Reviews (aggregated across the album's products) ===== -->
+                    <StackPanel Spacing="12" IsVisible="{Binding HasSelectedAlbum}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="h2" Text="Відгуки"/>
+                                <TextBlock Text="{Binding AlbumRatingLabel}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding AlbumRatingLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="ghost"
+                                    Command="{Binding ToggleShowAllReviewsCommand}"
+                                    IsVisible="{Binding HasMoreReviews}">
+                                <TextBlock Text="Показати всі"/>
+                            </Button>
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding Reviews}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="m:Review">
+                                    <Border Background="{StaticResource BgElevatedBrush}"
+                                            CornerRadius="{StaticResource RadiusM}"
+                                            Padding="14" Margin="0,0,0,10">
+                                        <StackPanel Spacing="6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                                                            VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding UserDisplayName}"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                    <Path Classes="icon sm accent filled" Data="{StaticResource IconStar}"
+                                                          VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Rating}"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                           Classes="muted"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Classes="muted" Text="Відгуків поки немає."
+                                   IsVisible="{Binding !HasReviews}"/>
+
+                        <!-- Leave-review form: owners only (guests and
+                             non-buyers edit/manage reviews from the product
+                             page / profile instead). -->
+                        <Border Background="{StaticResource BgElevatedBrush}"
+                                CornerRadius="{StaticResource RadiusM}"
+                                Padding="14"
+                                IsVisible="{Binding CanLeaveReview}">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Залишити відгук" Classes="h3"/>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Оцінка:" Classes="muted" VerticalAlignment="Center"/>
+                                    <NumericUpDown Value="{Binding NewReviewRating}"
+                                                   Minimum="1" Maximum="5" Increment="1"
+                                                   Width="80" ShowButtonSpinner="True"/>
+                                    <Path Classes="icon accent filled" Data="{StaticResource IconStar}"
+                                          VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBox Text="{Binding NewReviewText}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         MinHeight="80"
+                                         PlaceholderText="Ваші враження від альбому..."/>
+                                <Button Classes="primary" Content="Надіслати"
+                                        HorizontalAlignment="Left"
+                                        Command="{Binding SubmitReviewCommand}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding ReviewMessage}" Classes="muted"
+                                   IsVisible="{Binding ReviewMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
 
                     <!-- ===== More from artist ===== -->

@@ -47,10 +47,13 @@ public interface ICatalogService
     bool IsInWishlist(int userId, int productId);
     void AddToWishlist(int userId, int productId);
     void RemoveFromWishlist(int userId, int productId);
+    // Saved products for the user, newest first; raises WishlistChanged on add/remove.
+    IReadOnlyList<Product> GetWishlistProducts(int userId);
+    event EventHandler? WishlistChanged;
 
     Product AddProduct(ProductDraft draft);
     void UpdateProduct(int productId, ProductFormat format, decimal price, int stock, int releaseYear,
-        string? label, string? samplePath, string? fullPath, bool isActive);
+        string? label, string? coverPath, string? samplePath, string? fullPath, bool isActive);
     void SetProductActive(int productId, bool isActive);
 
     void UpdateOrderStatus(int orderId, OrderStatus status);
@@ -59,7 +62,7 @@ public interface ICatalogService
     RevenueReport RevenueForPeriod(DateTime from, DateTime to);
 
     void ExportOrdersToExcel(string path);
-    void ExportProductsToCsv(string path);
+    void ExportProductsToExcel(string path);
 
     // Reloads the in-memory reference cache (genres/artists/albums/products/reviews) from
     // the DB — call after out-of-band writes (e.g. checkout decrementing Stock).

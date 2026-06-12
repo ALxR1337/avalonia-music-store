@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -43,10 +42,11 @@ public class CatalogService : ICatalogService
     public IReadOnlyList<NewArrivalAlbum> GetNewArrivalAlbums(int count = 8) =>
         _albums
             .OrderByDescending(a => a.Year)
-            .Take(count)
             .Select(album =>
             {
-                var formats = _products.Where(p => p.AlbumId == album.Id).ToList();
+                // Deactivated editions must not reach the storefront shelf; an
+                // album whose every edition is inactive drops out entirely.
+                var formats = _products.Where(p => p.AlbumId == album.Id && p.IsActive).ToList();
                 return new NewArrivalAlbum
                 {
                     Album = album,
@@ -54,6 +54,8 @@ public class CatalogService : ICatalogService
                     Cd = formats.FirstOrDefault(p => p.Format == ProductFormat.CD),
                 };
             })
+            .Where(a => a.HasVinyl || a.HasCd)
+            .Take(count)
             .ToList();
 
     public IReadOnlyList<Product> GetPopular(int count = 8) =>
@@ -222,6 +224,27 @@ public class CatalogService : ICatalogService
         return true;
     }
 
+    public event EventHandler? WishlistChanged;
+
+    public IReadOnlyList<Product> GetWishlistProducts(int userId)
+    {
+        if (userId <= 0) return new List<Product>();
+        using var db = _dbFactory.CreateDbContext();
+        var productIds = db.Wishlists.AsNoTracking()
+            .Where(w => w.UserId == userId)
+            .OrderByDescending(w => w.AddedAt)
+            .Select(w => w.ProductId)
+            .ToList();
+        // Resolve against the in-memory cache so Album/Artist/Genre navigations
+        // are already populated, same as everywhere else in the catalog.
+        var byId = _products.ToDictionary(p => p.Id);
+        return productIds
+            .Select(id => byId.TryGetValue(id, out var p) ? p : null)
+            .Where(p => p is not null)
+            .Select(p => p!)
+            .ToList();
+    }
+
     public bool IsInWishlist(int userId, int productId)
     {
         if (userId <= 0) return false;
@@ -242,6 +265,7 @@ public class CatalogService : ICatalogService
             AddedAt = System.DateTime.UtcNow
         });
         db.SaveChanges();
+        WishlistChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void RemoveFromWishlist(int userId, int productId)
@@ -252,6 +276,7 @@ public class CatalogService : ICatalogService
         if (row is null) return;
         db.Wishlists.Remove(row);
         db.SaveChanges();
+        WishlistChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public Product AddProduct(ProductDraft draft)
@@ -356,7 +381,7 @@ public class CatalogService : ICatalogService
     }
 
     public void UpdateProduct(int productId, ProductFormat format, decimal price, int stock, int releaseYear,
-        string? label, string? samplePath, string? fullPath, bool isActive)
+        string? label, string? coverPath, string? samplePath, string? fullPath, bool isActive)
     {
         using var db = _dbFactory.CreateDbContext();
         var product = db.Products.FirstOrDefault(p => p.Id == productId);
@@ -368,6 +393,12 @@ public class CatalogService : ICatalogService
         product.ReleaseYear = releaseYear;
         product.Label = string.IsNullOrWhiteSpace(label) ? null : label.Trim();
         product.IsActive = isActive;
+
+        if (!string.IsNullOrWhiteSpace(coverPath))
+        {
+            var album = db.Albums.FirstOrDefault(a => a.Id == product.AlbumId);
+            if (album is not null) album.CoverPath = coverPath;
+        }
 
         if (!string.IsNullOrWhiteSpace(samplePath) || !string.IsNullOrWhiteSpace(fullPath))
         {
@@ -492,7 +523,9 @@ public class CatalogService : ICatalogService
         wb.SaveAs(path);
     }
 
-    public void ExportProductsToCsv(string path)
+    // Same library and look as ExportOrdersToExcel so both admin exports
+    // produce one consistent format.
+    public void ExportProductsToExcel(string path)
     {
         using var db = _dbFactory.CreateDbContext();
         var products = db.Products.AsNoTracking()
@@ -501,24 +534,39 @@ public class CatalogService : ICatalogService
             .OrderBy(p => p.Id)
             .ToList();
 
-        using var w = new StreamWriter(path, append: false, encoding: System.Text.Encoding.UTF8);
-        w.WriteLine("Id;Виконавець;Альбом;Жанр;Рік;Формат;Ціна;Залишок;Активний;Продажі;Рейтинг");
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Товари");
+
+        var headers = new[]
+        {
+            "Id", "Виконавець", "Альбом", "Жанр", "Рік", "Формат",
+            "Ціна, ₴", "Залишок", "Активний", "Продажі", "Рейтинг",
+        };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            ws.Cell(1, i + 1).Value = headers[i];
+            ws.Cell(1, i + 1).Style.Font.Bold = true;
+        }
+
+        int row = 2;
         foreach (var p in products)
         {
-            var artist = Csv(p.Album?.Artist?.Name);
-            var album = Csv(p.Album?.Title);
-            var genre = Csv(p.Album?.Genre?.Name);
-            var format = p.Format == ProductFormat.Vinyl ? "LP" : "CD";
-            w.WriteLine($"{p.Id};{artist};{album};{genre};{p.Album?.Year};{format};{p.Price:0.00};{p.Stock};{(p.IsActive ? "так" : "ні")};{p.SalesCount};{p.Rating:0.00}");
+            ws.Cell(row, 1).Value = p.Id;
+            ws.Cell(row, 2).Value = p.Album?.Artist?.Name ?? "—";
+            ws.Cell(row, 3).Value = p.Album?.Title ?? "—";
+            ws.Cell(row, 4).Value = p.Album?.Genre?.Name ?? "—";
+            ws.Cell(row, 5).Value = p.Album?.Year;
+            ws.Cell(row, 6).Value = p.Format == ProductFormat.Vinyl ? "LP" : "CD";
+            ws.Cell(row, 7).Value = p.Price;
+            ws.Cell(row, 8).Value = p.Stock;
+            ws.Cell(row, 9).Value = p.IsActive ? "так" : "ні";
+            ws.Cell(row, 10).Value = p.SalesCount;
+            ws.Cell(row, 11).Value = p.Rating;
+            row++;
         }
-    }
 
-    private static string Csv(string? s)
-    {
-        if (string.IsNullOrEmpty(s)) return string.Empty;
-        if (s.Contains(';') || s.Contains('"') || s.Contains('\n'))
-            return "\"" + s.Replace("\"", "\"\"") + "\"";
-        return s;
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
     }
 
     public void RefreshReferenceData() => LoadReferenceData();

@@ -18,6 +18,7 @@ public sealed class SuggestionKindToIconConverter : IValueConverter
             "album" => "IconBox",
             "artist" => "IconUser",
             "review" => "IconStar",
+            "history" => "IconClock",
             _ => "IconSearch",
         };
         if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true)

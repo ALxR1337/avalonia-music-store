@@ -8,7 +8,10 @@
              x:Class="MusicApp.Views.SearchResultsView"
              x:DataType="vm:SearchResultsViewModel">
 
-    <Grid ColumnDefinitions="280,*" Margin="32,24,32,32">
+    <!-- The page is locked to the viewport height by code-behind, so the facet
+         column stays in view while the RESULTS column scrolls — the window's
+         outer ScrollViewer used to scroll the filters away with the cards. -->
+    <Grid x:Name="Root" ColumnDefinitions="280,*" Margin="32,24,32,32">
 
         <!-- ============ Facet sidebar ============ -->
         <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
@@ -21,7 +24,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:FacetGroupViewModel">
                             <StackPanel Spacing="6" Margin="0,0,0,4">
-                                <TextBlock Text="{Binding Title}" Classes="muted"/>
+                                <TextBlock Text="{Binding Title}" Classes="muted"
+                                           IsVisible="{Binding ShowTitle}"/>
                                 <ItemsControl ItemsSource="{Binding VisibleBuckets}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="s:FacetBucket">
@@ -92,29 +96,40 @@
                                    FormatString="0.0" ShowButtonSpinner="True"/>
                 </StackPanel>
 
-                <Button Classes="ghost" Content="Скинути все"
+                <Button Classes="outline" Content="Скинути все"
                         HorizontalAlignment="Stretch"
                         Command="{Binding ResetFiltersCommand}"/>
                 <Button Classes="primary"
                         HorizontalAlignment="Stretch"
+                        ToolTip.Tip="{Binding SaveQueryToolTip}"
                         Command="{Binding SaveQueryCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                        <Path Data="{StaticResource IconSave}" Fill="Transparent" Stroke="Black"
+                        <Path Data="{StaticResource IconSave}" Fill="Transparent"
+                              Stroke="{StaticResource OnAccentBrush}"
                               StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
                               Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
                         <TextBlock Text="Зберегти запит" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           Text="{Binding SaveQueryFeedback}"
+                           IsVisible="{Binding SaveQueryFeedback, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
         </ScrollViewer>
 
-        <!-- ============ Results ============ -->
-        <StackPanel Grid.Column="1" Spacing="18">
+        <!-- ============ Results (own scroll — the sidebar must not move) ============ -->
+        <ScrollViewer x:Name="ResultsScroll" Grid.Column="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="18">
 
-            <!-- Header -->
+            <!-- Header. The counter hides at zero — the empty-state line below
+                 already says it, and «Знайдено: 0» next to it was a duplicate. -->
             <StackPanel Spacing="4">
                 <TextBlock Classes="muted"
-                           Text="{Binding TotalCount, StringFormat='Знайдено альбомів: {0}'}"/>
+                           Text="{Binding CountLabel}"
+                           IsVisible="{Binding HasResults}"/>
                 <TextBlock Classes="h1" Text="{Binding HeaderLabel}"/>
             </StackPanel>
 
@@ -187,10 +202,18 @@
                 </Grid>
             </Border>
 
-            <!-- No results -->
-            <TextBlock Classes="muted"
-                       Text="Нічого не знайдено. Спробуйте інші слова або скиньте фільтри."
-                       IsVisible="{Binding HasNoResults}"/>
+            <!-- No results: name the way out, don't just state the fact -->
+            <StackPanel Spacing="12" IsVisible="{Binding HasNoResults}">
+                <TextBlock Classes="muted"
+                           Text="Нічого не знайдено. Спробуйте інші слова — або:"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="outline" Content="Скинути фільтри"
+                            Command="{Binding ResetFiltersCommand}"
+                            IsVisible="{Binding ActiveFilterChips.Count}"/>
+                    <Button Classes="outline" Content="Показати всі альбоми"
+                            Command="{Binding ShowAllCommand}"/>
+                </StackPanel>
+            </StackPanel>
 
             <!-- Albums (the only result type — tracks/artists fold into the album) -->
             <ItemsControl ItemsSource="{Binding Albums}">
@@ -231,7 +254,7 @@
                                     <TextBlock Text="{Binding Album.Artist.Name}"
                                                Classes="muted"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Price, StringFormat='{}{0:0} ₴'}"
+                                    <TextBlock Text="{Binding PriceLabel}"
                                                Foreground="{StaticResource AccentBrush}"
                                                FontWeight="SemiBold" FontSize="13"/>
                                     <TextBlock Text="{Binding FirstMatchedTrack.Title, StringFormat='↳ у треку «{0}»'}"
@@ -245,5 +268,6 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

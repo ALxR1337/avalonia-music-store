@@ -3,6 +3,9 @@
 
     <!-- Spotify-style palette: deep blacks, near-black sidebar, warm accent -->
     <Color x:Key="BgBase">#FF121212</Color>
+    <!-- Alpha-zero twin of BgBase for edge-fade gradients: keeps the vignettes
+         coupled to the page background if the palette ever changes. -->
+    <Color x:Key="BgBaseTransparent">#00121212</Color>
     <Color x:Key="BgSidebar">#FF000000</Color>
     <Color x:Key="BgElevated">#FF181818</Color>
     <Color x:Key="BgElevatedHover">#FF1F1F1F</Color>

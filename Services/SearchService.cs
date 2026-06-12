@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,6 @@ public class SearchService : ISearchService
     private const double WeightRating = 0.1;
     private const double WeightRecency = 0.1;
     private const int MaxFtsHits = 200;
-    private const int MaxArtistFacets = 12;
 
     private static readonly StringComparer Ci = StringComparer.OrdinalIgnoreCase;
 
@@ -35,6 +35,7 @@ public class SearchService : ISearchService
     {
         filters ??= new SearchFilters();
         var ast = SearchQueryParser.Parse(query);
+        var hasTextQuery = !string.IsNullOrWhiteSpace(BuildMatchClause(ast));
 
         using var db = _dbFactory.CreateDbContext();
 
@@ -44,8 +45,12 @@ public class SearchService : ISearchService
         var albums = BuildHits(candidates, filters);
         var facets = ComputeFacets(candidates, filters);
 
+        // Suggest a correction only when the TEXT itself matched nothing.
+        // With candidates on hand the spelling is fine (filters may have
+        // narrowed them away), and the old `< 3` threshold used to "suggest"
+        // the user's own words back next to real results.
         string? didYouMean = null;
-        if (albums.Count < 3 && ast.Terms.OfType<FreeTextTerm>().Any())
+        if (hasTextQuery && candidates.Count == 0)
             didYouMean = SuggestSpellingCorrection(db, ast);
 
         return new SearchResults
@@ -56,7 +61,10 @@ public class SearchService : ISearchService
             Albums = albums,
             Facets = facets,
             DidYouMean = didYouMean,
-            TopResult = albums.FirstOrDefault(),
+            // The block duplicates the first card, so it earns its keep only
+            // when a text query produced an actual ranking to crown — browse
+            // mode and single-result pages get nothing extra.
+            TopResult = hasTextQuery && albums.Count >= 2 ? albums[0] : null,
             TotalCount = albums.Count
         };
     }
@@ -86,8 +94,9 @@ public class SearchService : ISearchService
             return hits;
         }
 
-        using (var cmd = conn.CreateCommand())
+        try
         {
+            using var cmd = conn.CreateCommand();
             // No content_type narrowing beyond dropping reviews: an artist match
             // must still surface that artist's albums (that was the bug behind
             // "виконавець:..." opening an empty profile), and tracks fold into albums.
@@ -108,6 +117,13 @@ public class SearchService : ISearchService
             while (r.Read())
                 hits.Add(new FtsHit(r.GetString(0), r.GetInt32(1), r.GetDouble(2)));
         }
+        catch (DbException)
+        {
+            // FTS5 has its own query grammar; whatever EscapeTerm let through
+            // that it still dislikes must read as "nothing found", not a crash
+            // of the whole app from the global search box.
+            hits.Clear();
+        }
 
         return hits;
     }
@@ -121,17 +137,24 @@ public class SearchService : ISearchService
             switch (t)
             {
                 case FreeTextTerm ft when !string.IsNullOrWhiteSpace(ft.Text):
-                    parts.Add((ft.Excluded ? "-" : "") + EscapeTerm(ft.Text) + "*");
+                {
+                    foreach (var w in FtsWords(ft.Text))
+                        parts.Add((ft.Excluded ? "-" : "") + w + "*");
                     break;
-                case PhraseTerm p:
+                }
+                case PhraseTerm p when !string.IsNullOrWhiteSpace(p.Phrase):
                     parts.Add((p.Excluded ? "-" : "") + "\"" + p.Phrase.Replace("\"", "\"\"") + "\"");
                     break;
                 // Field operators still bias the text match (prefix/phrase/exclusion)
                 // but no longer pin content_type — the rollup decides which albums win.
                 case FieldTextTerm ftx when ftx.Field is "artist" or "album" or "track" or "lyrics":
-                    parts.Add((ftx.Excluded ? "-" : "") + EscapeTerm(ftx.Value) + "*");
+                {
+                    foreach (var w in FtsWords(ftx.Value))
+                        parts.Add((ftx.Excluded ? "-" : "") + w + "*");
                     break;
-                case FieldPhraseTerm fpx when fpx.Field is "artist" or "album" or "track" or "lyrics":
+                }
+                case FieldPhraseTerm fpx when fpx.Field is "artist" or "album" or "track" or "lyrics"
+                                              && !string.IsNullOrWhiteSpace(fpx.Phrase):
                     parts.Add((fpx.Excluded ? "-" : "") + "\"" + fpx.Phrase.Replace("\"", "\"\"") + "\"");
                     break;
                 // genre/format/year/price/rating are post-filters — ignore here.
@@ -140,14 +163,22 @@ public class SearchService : ISearchService
         return string.Join(" ", parts);
     }
 
-    private static string EscapeTerm(string raw)
+    // Splits raw user text into FTS-safe tokens. Punctuation SEPARATES words —
+    // «AC/DC» becomes [AC, DC] matching the indexed tokens, where the old
+    // strip-and-glue version produced «ACDC», a token FTS never indexed. May
+    // return an empty list — the caller must DROP such a term; feeding raw
+    // `++` / `(((` into MATCH used to crash the app with a SqliteException.
+    private static List<string> FtsWords(string raw)
     {
+        var words = new List<string>();
         var sb = new StringBuilder();
         foreach (var c in raw)
         {
             if (char.IsLetterOrDigit(c) || c == '_') sb.Append(c);
+            else if (sb.Length > 0) { words.Add(sb.ToString()); sb.Clear(); }
         }
-        return sb.Length == 0 ? raw : sb.ToString();
+        if (sb.Length > 0) words.Add(sb.ToString());
+        return words;
     }
 
     // === Roll FTS hits up to albums ===
@@ -278,14 +309,16 @@ public class SearchService : ISearchService
             if (f.Artists.Count > 0 && !ArtistMatches(a, f.Artists)) continue;
 
             // An album shows up only if it has a purchasable product that clears the
-            // numeric/format/stock filters — that product becomes the card's primary.
-            var primary = c.Products
+            // numeric/format/stock filters — the cheapest of those becomes the card's
+            // primary; with several distinct passing prices the card reads "від …".
+            var passing = c.Products
                 .Where(p => ProductPasses(p, f))
                 .OrderBy(p => p.PriceCents)
-                .FirstOrDefault();
-            if (primary is null) continue;
+                .ToList();
+            if (passing.Count == 0) continue;
 
-            hits.Add(new AlbumHit(a, primary, c.Score, c.Match, c.MatchedTracks));
+            var priceIsFrom = passing.Select(p => p.PriceCents).Distinct().Count() > 1;
+            hits.Add(new AlbumHit(a, passing[0], c.Score, c.Match, c.MatchedTracks, priceIsFrom));
         }
         return hits.OrderByDescending(h => h.Score).ToList();
     }
@@ -313,49 +346,81 @@ public class SearchService : ISearchService
 
     // === Facets ===
 
-    // Counts are computed over the candidate set narrowed only by the year range,
-    // not by the genre/artist/format selections themselves — so toggling one genre
-    // does not zero out the other options (correct multi-select facet behaviour).
+    // Buckets are enumerated over the year-narrowed candidate set, so options
+    // never vanish just because another filter zeroed them; each bucket's COUNT
+    // honours every active constraint EXCEPT the bucket's own dimension.
+    // Within a dimension selections stay invisible to their own counts (picking
+    // Rock must not zero Jazz), but a price cap shows up in every counter —
+    // the numbers always promise exactly what clicking the bucket would yield.
     private List<FacetGroup> ComputeFacets(List<AlbumCandidate> candidates, SearchFilters filters)
     {
-        var facetBase = candidates.Where(c =>
+        bool YearOk(AlbumCandidate c) =>
             (filters.YearFrom is not int yf || c.Album.Year >= yf) &&
-            (filters.YearTo is not int yt || c.Album.Year <= yt) &&
-            c.Products.Any(p => p.IsActive)).ToList();
+            (filters.YearTo is not int yt || c.Album.Year <= yt);
+        bool GenresOk(AlbumCandidate c) =>
+            filters.Genres.Count == 0 || AlbumMatchesGenres(c.Album, filters.Genres, filters.GenresMatchAll);
+        bool ArtistsOk(AlbumCandidate c) =>
+            filters.Artists.Count == 0 || ArtistMatches(c.Album, filters.Artists);
+        bool ProductOk(Product p, bool ignoreFormat = false, bool ignoreStock = false) =>
+            p.IsActive
+            && (ignoreFormat || filters.Format is not ProductFormat fmt || p.Format == fmt)
+            && (filters.PriceFrom is not decimal pf || p.Price >= pf)
+            && (filters.PriceTo is not decimal pt || p.Price <= pt)
+            && (filters.MinRating is not double mr || p.Rating >= mr)
+            && (ignoreStock || !filters.InStockOnly || p.Stock > 0);
 
-        if (facetBase.Count == 0) return new List<FacetGroup>();
+        var enumBase = candidates
+            .Where(c => YearOk(c) && c.Products.Any(p => p.IsActive))
+            .ToList();
+        if (enumBase.Count == 0) return new List<FacetGroup>();
 
-        var genreBuckets = facetBase
-            .SelectMany(c => c.Album.AlbumGenres
-                .Where(ag => ag.Genre?.Name is not null)
-                .Select(ag => ag.Genre!.Name)
-                .Distinct(Ci)
-                .Select(name => (Name: name, AlbumId: c.Album.Id)))
+        var genreBase = enumBase.Where(c => ArtistsOk(c) && c.Products.Any(p => ProductOk(p))).ToList();
+        var artistBase = enumBase.Where(c => GenresOk(c) && c.Products.Any(p => ProductOk(p))).ToList();
+        var crossBase = enumBase.Where(c => GenresOk(c) && ArtistsOk(c)).ToList();
+
+        IEnumerable<string> GenresOf(AlbumCandidate c) => c.Album.AlbumGenres
+            .Where(ag => ag.Genre?.Name is not null)
+            .Select(ag => ag.Genre!.Name)
+            .Distinct(Ci);
+
+        var genreCounts = genreBase
+            .SelectMany(c => GenresOf(c).Select(name => (Name: name, AlbumId: c.Album.Id)))
             .GroupBy(x => x.Name, Ci)
-            .Select(g => new FacetBucket("genre", g.Key, g.Select(x => x.AlbumId).Distinct().Count(),
-                filters.Genres.Contains(g.Key, Ci)))
+            .ToDictionary(g => g.Key, g => g.Select(x => x.AlbumId).Distinct().Count(), Ci);
+        var genreBuckets = enumBase
+            .SelectMany(GenresOf)
+            .Distinct(Ci)
+            .Select(name => new FacetBucket("genre", name, genreCounts.GetValueOrDefault(name, 0),
+                filters.Genres.Contains(name, Ci)))
             .OrderByDescending(b => b.Count).ThenBy(b => b.Label)
             .ToList();
 
-        var artistBuckets = facetBase
+        var artistCounts = artistBase
             .Where(c => c.Album.Artist?.Name is not null)
             .GroupBy(c => c.Album.Artist!.Name, Ci)
-            .Select(g => new FacetBucket("artist", g.Key, g.Select(c => c.Album.Id).Distinct().Count(),
-                filters.Artists.Contains(g.Key, Ci)))
+            .ToDictionary(g => g.Key, g => g.Select(c => c.Album.Id).Distinct().Count(), Ci);
+        // No top-N cap: «Показати всі (N)» must mean ALL — the old Take(12)
+        // also dropped the checkbox of any active artist outside the top.
+        var artistBuckets = enumBase
+            .Where(c => c.Album.Artist?.Name is not null)
+            .Select(c => c.Album.Artist!.Name)
+            .Distinct(Ci)
+            .Select(name => new FacetBucket("artist", name, artistCounts.GetValueOrDefault(name, 0),
+                filters.Artists.Contains(name, Ci)))
             .OrderByDescending(b => b.Count).ThenBy(b => b.Label)
-            .Take(MaxArtistFacets)
             .ToList();
 
-        var formatBuckets = facetBase
-            .SelectMany(c => c.Products.Where(p => p.IsActive)
-                .Select(p => (p.Format, AlbumId: c.Album.Id)))
-            .GroupBy(x => x.Format)
-            .Select(g => new FacetBucket("format", g.Key == ProductFormat.Vinyl ? "Вініл LP" : "CD",
-                g.Select(x => x.AlbumId).Distinct().Count(), filters.Format == g.Key))
+        var formatBuckets = enumBase
+            .SelectMany(c => c.Products.Where(p => p.IsActive).Select(p => p.Format))
+            .Distinct()
+            .Select(fmt => new FacetBucket("format",
+                fmt == ProductFormat.Vinyl ? "Вініл LP" : "CD",
+                crossBase.Count(c => c.Products.Any(p => p.Format == fmt && ProductOk(p, ignoreFormat: true))),
+                filters.Format == fmt))
             .OrderByDescending(b => b.Count)
             .ToList();
 
-        var inStock = facetBase.Count(c => c.Products.Any(p => p.IsActive && p.Stock > 0));
+        var inStock = crossBase.Count(c => c.Products.Any(p => p.Stock > 0 && ProductOk(p, ignoreStock: true)));
 
         var groups = new List<FacetGroup>();
         if (genreBuckets.Count > 0) groups.Add(new FacetGroup("genre", "Жанр", genreBuckets));
@@ -372,13 +437,20 @@ public class SearchService : ISearchService
 
     private string? SuggestSpellingCorrection(MusicStoreDbContext db, SearchQuery ast)
     {
-        var firstFreeText = ast.Terms.OfType<FreeTextTerm>().FirstOrDefault();
-        if (firstFreeText is null || firstFreeText.Text.Length < 3) return null;
+        // Compare the WHOLE free-text part against names: «Bobx Dylan» must be
+        // measured as one string, the old first-token-only version could never
+        // bridge a multi-word artist name.
+        var words = ast.Terms.OfType<FreeTextTerm>()
+            .Where(t => !t.Excluded && !string.IsNullOrWhiteSpace(t.Text))
+            .Select(t => t.Text)
+            .ToList();
+        if (words.Count == 0) return null;
+        var query = string.Join(" ", words);
+        if (query.Length < 3) return null;
 
-        var query = firstFreeText.Text;
         var candidates = new List<string>();
-        candidates.AddRange(db.Artists.AsNoTracking().Select(a => a.Name).Take(200).ToList());
-        candidates.AddRange(db.Albums.AsNoTracking().Select(a => a.Title).Take(200).ToList());
+        candidates.AddRange(db.Artists.AsNoTracking().Select(a => a.Name).Take(500).ToList());
+        candidates.AddRange(db.Albums.AsNoTracking().Select(a => a.Title).Take(500).ToList());
 
         string? best = null;
         int bestDist = int.MaxValue;
@@ -390,27 +462,39 @@ public class SearchService : ISearchService
         }
 
         if (best is null) return null;
+        // Distance 0 means the query already IS that name (case aside) —
+        // suggesting it back is noise, not a correction.
         var threshold = Math.Max(2, query.Length / 3);
-        return bestDist <= threshold ? best : null;
+        if (bestDist == 0 || bestDist > threshold) return null;
+
+        // Only offer a correction that actually finds something.
+        return ExecuteFtsHits(db, SearchQueryParser.Parse(best)).Count > 0 ? best : null;
     }
 
     // === Autocomplete ===
 
     public IReadOnlyList<AutocompleteHit> Autocomplete(string prefix, int max = 8)
     {
-        if (string.IsNullOrWhiteSpace(prefix) || prefix.Length < 2)
+        if (string.IsNullOrWhiteSpace(prefix))
             return System.Array.Empty<AutocompleteHit>();
 
-        var cleaned = EscapeTerm(prefix.Trim());
-        if (cleaned.Length < 2) return System.Array.Empty<AutocompleteHit>();
+        // Multi-word input: completed words match as full tokens, the word
+        // still being typed matches as a prefix — «december 2» → `december 2*`.
+        // (The old sanitiser flattened the whole string to «december2», so the
+        // moment a second word appeared every suggestion vanished.)
+        var words = FtsWords(prefix.Trim());
+        if (words.Count == 0 || words.Sum(w => w.Length) < 2)
+            return System.Array.Empty<AutocompleteHit>();
+        var match = string.Join(" ", words.Select((w, i) => i == words.Count - 1 ? w + "*" : w));
 
         using var db = _dbFactory.CreateDbContext();
         var conn = db.Database.GetDbConnection();
         if (conn.State != System.Data.ConnectionState.Open) conn.Open();
 
         var raw = new List<(string Type, int Id, string Title)>();
-        using (var cmd = conn.CreateCommand())
+        try
         {
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 SELECT content_type, content_id, title
                 FROM SearchIndex
@@ -418,12 +502,16 @@ public class SearchService : ISearchService
                   AND content_type IN ('artist','album','track')
                 ORDER BY -bm25(SearchIndex) DESC
                 LIMIT $lim;";
-            var p1 = cmd.CreateParameter(); p1.ParameterName = "$m"; p1.Value = cleaned + "*"; cmd.Parameters.Add(p1);
+            var p1 = cmd.CreateParameter(); p1.ParameterName = "$m"; p1.Value = match; cmd.Parameters.Add(p1);
             var p2 = cmd.CreateParameter(); p2.ParameterName = "$lim"; p2.Value = max; cmd.Parameters.Add(p2);
 
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 raw.Add((r.GetString(0), r.GetInt32(1), r.GetString(2)));
+        }
+        catch (DbException)
+        {
+            return System.Array.Empty<AutocompleteHit>();
         }
 
         if (raw.Count == 0) return System.Array.Empty<AutocompleteHit>();
@@ -444,12 +532,12 @@ public class SearchService : ISearchService
                 .ToDictionary(x => x.Id, x => x.AlbumId);
 
         var coverAlbumIds = albumIds.Concat(trackAlbumId.Values).Distinct().ToList();
-        var albumCovers = coverAlbumIds.Count == 0
-            ? new Dictionary<int, string?>()
+        var albumInfo = coverAlbumIds.Count == 0
+            ? new Dictionary<int, (string? Cover, string Title, string? Artist)>()
             : db.Albums.AsNoTracking()
                 .Where(a => coverAlbumIds.Contains(a.Id))
-                .Select(a => new { a.Id, a.CoverPath })
-                .ToDictionary(a => a.Id, a => a.CoverPath);
+                .Select(a => new { a.Id, a.CoverPath, a.Title, Artist = a.Artist!.Name })
+                .ToDictionary(a => a.Id, a => (Cover: a.CoverPath, Title: a.Title, Artist: (string?)a.Artist));
 
         var artistPhotos = artistIds.Count == 0
             ? new Dictionary<int, string?>()
@@ -463,18 +551,51 @@ public class SearchService : ISearchService
         {
             switch (type)
             {
-                case "album":
-                    results.Add(new AutocompleteHit(title, "album", id, albumCovers.GetValueOrDefault(id)));
+                case "album" when albumInfo.TryGetValue(id, out var ai):
+                    results.Add(new AutocompleteHit(title, "album", id, ai.Cover,
+                        ai.Artist is null ? "альбом" : $"альбом · {ai.Artist}"));
                     break;
-                case "track" when trackAlbumId.TryGetValue(id, out var albumId):
-                    results.Add(new AutocompleteHit(title, "album", albumId, albumCovers.GetValueOrDefault(albumId)));
+                // A track is still bought as its album, but the row must SAY so —
+                // a bare «album» label used to send users to a page whose title
+                // matched nothing they clicked.
+                case "track" when trackAlbumId.TryGetValue(id, out var albumId)
+                                  && albumInfo.TryGetValue(albumId, out var ti):
+                    results.Add(new AutocompleteHit(title, "track", albumId, ti.Cover,
+                        $"трек · з альбому «{ti.Title}»"));
                     break;
                 case "artist":
-                    results.Add(new AutocompleteHit(title, "artist", id, artistPhotos.GetValueOrDefault(id)));
+                    results.Add(new AutocompleteHit(title, "artist", id,
+                        artistPhotos.GetValueOrDefault(id), "виконавець"));
                     break;
             }
         }
-        return results;
+
+        // An album and its title track would otherwise render two rows with the
+        // same text pointing at the same page.
+        var seen = new HashSet<(string, int?)>();
+        var deduped = new List<AutocompleteHit>(results.Count);
+        foreach (var r in results)
+            if (seen.Add((r.Text.ToLowerInvariant(), r.EntityId)))
+                deduped.Add(r);
+        return deduped;
+    }
+
+    // Distinct query texts, newest first — feeds the «нещодавні пошуки»
+    // suggestions under the empty search box.
+    public IReadOnlyList<string> RecentQueries(int userId, int max = 5)
+    {
+        if (userId <= 0) return System.Array.Empty<string>();
+        using var db = _dbFactory.CreateDbContext();
+        return db.SearchHistory.AsNoTracking()
+            .Where(h => h.UserId == userId)
+            .OrderByDescending(h => h.ExecutedAt).ThenByDescending(h => h.Id)
+            .Take(50)
+            .Select(h => h.Query)
+            .AsEnumerable()
+            .Where(q => !string.IsNullOrWhiteSpace(q))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(max)
+            .ToList();
     }
 
     // === History + saved searches ===
@@ -535,7 +656,11 @@ public class SearchService : ISearchService
             int count = 0;
             try
             {
-                count = Search(s.QueryJson).TotalCount;
+                // Lift the DSL facets into SearchFilters the same way the results
+                // page does — Search(raw) alone ignores them and would count the
+                // whole catalogue for facet-only queries like «жанр:"Jazz"».
+                var (text, filters) = SavedQueryInterpreter.Lift(s.QueryJson);
+                count = Search(text, filters).TotalCount;
             }
             catch { /* malformed query stays at 0 */ }
             result.Add(new SavedSearchSummary(s, count));

@@ -207,6 +207,27 @@
         <Setter Property="TextElement.Foreground" Value="{StaticResource OnAccentBrush}" />
     </Style>
 
+    <!-- Secondary CTA: outlined pill for actions that sit next to a primary
+         (a bare ghost reads as plain text there, not as a button) -->
+    <Style Selector="Button.outline">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource FgSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
+        <Setter Property="Padding" Value="22,9" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.outline:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#0FFFFFFF" />
+        <Setter Property="BorderBrush" Value="{StaticResource FgTertiaryBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#14FFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+
     <!-- Round play button (Spotify-style accent circle) -->
     <Style Selector="Button.play-circle">
         <Setter Property="Width" Value="48" />
@@ -287,6 +308,11 @@
         <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
     <Style Selector="Button.ghost:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#14FFFFFF" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
+    </Style>
+    <!-- Keyboard highlight for search-suggestion rows (↑/↓ in the search box) -->
+    <Style Selector="Button.ghost.highlighted /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#14FFFFFF" />
         <Setter Property="TextElement.Foreground" Value="{StaticResource FgPrimaryBrush}" />
     </Style>
@@ -669,6 +695,10 @@
         <Setter Property="Height" Value="48" />
         <Setter Property="Opacity" Value="0" />
         <Setter Property="IsHitTestVisible" Value="False" />
+        <!-- Mouse-only affordance: keyboard users scroll a shelf by tabbing
+             through its tiles (focus brings them into view); without this the
+             chevrons are invisible tab stops. -->
+        <Setter Property="Focusable" Value="False" />
         <Setter Property="Transitions">
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
@@ -726,7 +756,7 @@
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
                 <GradientStop Offset="0" Color="#55E07B39" />
                 <GradientStop Offset="0.55" Color="#22E07B39" />
-                <GradientStop Offset="1" Color="#00121212" />
+                <GradientStop Offset="1" Color="{StaticResource BgBaseTransparent}" />
             </LinearGradientBrush>
         </Setter>
     </Style>
@@ -750,9 +780,6 @@
         <Setter Property="FontSize" Value="40" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="LetterSpacing" Value="0" />
-    </Style>
-    <Style Selector="TextBlock.hero-title.accent">
-        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
     </Style>
 
     <Style Selector="TextBlock.hero-subtitle">

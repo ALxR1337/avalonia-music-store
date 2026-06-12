@@ -82,10 +82,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Hardware media keys: act wherever focus is, but only when a track
+        // is loaded — otherwise let them pass through untouched.
+        switch (e.Key)
+        {
+            case Key.MediaPlayPause when vm.HasLoadedTrack:
+                vm.TogglePlayPauseCommand.Execute(null);
+                e.Handled = true;
+                return;
+            case Key.MediaNextTrack when vm.HasLoadedTrack:
+                vm.MiniPlayer?.NextCommand.Execute(null);
+                e.Handled = true;
+                return;
+            case Key.MediaPreviousTrack when vm.HasLoadedTrack:
+                vm.MiniPlayer?.PreviousCommand.Execute(null);
+                e.Handled = true;
+                return;
+        }
+
         if (e.Key != Key.Space) return;
 
         // Don't steal the space character from text inputs.
         if (FocusManager?.GetFocusedElement() is TextBox) return;
+
+        // Nothing loaded → nothing to toggle: let Space reach the focused
+        // control instead of dying in a no-op. Once playback starts, the
+        // Spotify-style global pause deliberately wins over focused buttons
+        // (see Space_toggles_play_pause_globally_when_no_textbox_focused).
+        if (!vm.HasLoadedTrack) return;
 
         vm.TogglePlayPauseCommand.Execute(null);
         e.Handled = true;
@@ -127,9 +151,43 @@ public partial class MainWindow : Window
 
     private void OnSearchKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        switch (e.Key)
+        {
+            case Key.Enter:
+                vm.SubmitOrPickHighlighted();
+                e.Handled = true;
+                break;
+            case Key.Down when vm.IsAutocompleteOpen:
+                vm.MoveSuggestionHighlight(1);
+                e.Handled = true;
+                break;
+            case Key.Up when vm.IsAutocompleteOpen:
+                vm.MoveSuggestionHighlight(-1);
+                e.Handled = true;
+                break;
+            case Key.Escape when vm.IsAutocompleteOpen:
+                vm.CloseAutocomplete();
+                e.Handled = true;
+                break;
+            case Key.Escape when !string.IsNullOrEmpty(vm.SearchQuery):
+                vm.ClearSearchCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnSearchGotFocus(object? sender, FocusChangedEventArgs e)
+    {
         if (DataContext is MainWindowViewModel vm)
-            vm.SubmitSearchCommand.Execute(null);
+            vm.OnSearchBoxFocused();
+    }
+
+    private void OnSearchClear(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ClearSearchCommand.Execute(null);
+        SearchBox.Focus();
     }
 
     // Collapse sidebar to a 72px icon column when the window is narrower than 1100px.
